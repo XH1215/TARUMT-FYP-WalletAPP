@@ -13,6 +13,7 @@ let poolPromise = sql.connect(dbConfig)
         process.exit(1);
     });
 
+    
     const register = async (req, res) => {
         const { email, password } = req.body;
     
