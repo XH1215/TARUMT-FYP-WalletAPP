@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'credential2.dart'; // Import the Credential2 screen
 
 class Credential extends StatelessWidget {
   const Credential({super.key});
@@ -8,13 +7,13 @@ class Credential extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, 
+        automaticallyImplyLeading: false,
         centerTitle: true,
         backgroundColor: const Color(0xFF171B63),
         title: const Padding(
           padding: EdgeInsets.only(bottom: 10.0),
           child: Text(
-            'Certification',
+            'Comfirmation',
             style: TextStyle(
               color: Colors.white,
             ),
@@ -38,39 +37,27 @@ class Credential extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10.0),
                   color: Colors.transparent,
                 ),
-                child: InkWell(
-                  onTap: () {
-                    // Navigate to Credential2 screen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const Credential2(),
+                child: const SizedBox(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: Icon(
+                          Icons.verified,
+                          size: 50.0,
+                          color: Color(0xFF171B63),
+                        ),
                       ),
-                    );
-                  },
-                  child: SizedBox(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(10.0),
-                          child: Image.asset(
-                            'images/receivedCre.png',
-                            width: 70.0, // Adjust width as needed
-                            height: 70.0, // Adjust height as needed
-                          ),
+                      SizedBox(width: 20.0),
+                      Text(
+                        'Confirmation for Credential',
+                        style: TextStyle(
+                          fontSize: 20.0,
+                          color: Color(0xFF171B63),
                         ),
-                        const SizedBox(
-                            width: 20.0), // Space between image and text
-                        const Text(
-                          'Certification',
-                          style: TextStyle(
-                            fontSize: 20.0,
-                            color: Color(0xFF171B63),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),

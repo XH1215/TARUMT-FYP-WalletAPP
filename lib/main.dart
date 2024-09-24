@@ -71,7 +71,7 @@ class HomePageState extends State<HomePage> {
             icon: Icon(Icons.account_balance_wallet),
           ),
           BottomNavigationBarItem(
-            label: 'Certification',
+            label: 'Credential',
             icon: Icon(Icons.badge),
           ),
           BottomNavigationBarItem(

@@ -1,6 +1,5 @@
 import 'package:firstly/education_info.dart';
 import 'package:firstly/profile_info.dart';
-import 'package:firstly/quali_info.dart';
 import 'package:firstly/softskill_info.dart';
 import 'package:firstly/work_info.dart';
 import 'package:firstly/credential2.dart';
@@ -53,7 +52,7 @@ class SelfCredentialPage1 extends StatelessWidget {
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (BuildContext context) {
-                      return EducationInfoPage(); // Navigate to EducationPage
+                      return const EducationInfoPage(); // Navigate to EducationPage
                     },
                   ),
                 ),
@@ -67,7 +66,7 @@ class SelfCredentialPage1 extends StatelessWidget {
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (BuildContext context) {
-                      return WorkInfoPage(); // Navigate to WorkExperiencePage
+                      return const WorkInfoPage(); // Navigate to WorkExperiencePage
                     },
                   ),
                 ),
@@ -93,7 +92,7 @@ class SelfCredentialPage1 extends StatelessWidget {
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (BuildContext context) {
-                      return SoftSkillInfoPage(); // Navigate to SoftSkillPage
+                      return const SoftSkillInfoPage(); // Navigate to SoftSkillPage
                     },
                   ),
                 ),

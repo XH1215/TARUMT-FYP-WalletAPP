@@ -54,16 +54,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   List<bool> _isPublicList = [];
   bool _isEditing = false;
 
-  // Validation error lists
-  List<String> _levelErrors = [];
-  List<String> _fieldOfStudyErrors = [];
-  List<String> _instituteNameErrors = [];
-  List<String> _instituteCountryErrors = [];
-  List<String> _instituteStateErrors = [];
-  List<String> _instituteCityErrors = [];
-  List<String> _startDateErrors = [];
-  List<String> _endDateErrors = [];
-
   @override
   void initState() {
     super.initState();
