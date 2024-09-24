@@ -270,11 +270,6 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               updatedWorkEntries[i]['WorkExpID']; // Update the new WorkExpID
         }
 
-        // Show success message using SnackBar
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Work experience saved successfully')),
-        );
-
         devtools.log('Work entries saved successfully.');
       } else {
         devtools.log('Failed to save work entries. Status code: ${response.statusCode}');
@@ -566,31 +561,56 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           const SizedBox(height: 15.0),
           _buildInputField(context, 'Description', _descriptionControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _selectMonthYear(context, index, true), // Start Date
-                  child: AbsorbPointer(
-                    child: _buildInputField(context, 'Start Date',
-                      TextEditingController(text: _startDateList[index]),
-                      _isEditing),
-                  ),
-                ),
+         Row(
+  children: [
+    Expanded(
+      child: GestureDetector(
+        onTap: _isEditing ? () => _selectMonthYear(context, index, true) : null, // Start Date
+        child: AbsorbPointer(
+          absorbing: !_isEditing, // Disable interaction when not editing
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: Text(
+              _startDateList[index], // Display the selected start date
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
-              const SizedBox(width: 15.0),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _selectMonthYear(context, index, false), // End Date
-                  child: AbsorbPointer(
-                    child: _buildInputField(context, 'End Date',
-                      TextEditingController(text: _endDateList[index]),
-                      _isEditing),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
+        ),
+      ),
+    ),
+    const SizedBox(width: 15.0),
+    Expanded(
+      child: GestureDetector(
+        onTap: _isEditing ? () => _selectMonthYear(context, index, false) : null, // End Date
+        child: AbsorbPointer(
+          absorbing: !_isEditing, // Disable interaction when not editing
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: Text(
+              _endDateList[index], // Display the selected end date
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ],
+),
+
           const SizedBox(height: 15.0),
           if (_isEditing)
             Row(

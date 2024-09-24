@@ -481,27 +481,53 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   children: [
     Expanded(
       child: GestureDetector(
-        onTap: () => _selectMonthYear(context, index, true), // Start Date
+        onTap: _isEditing ? () => _selectMonthYear(context, index, true) : null, // Start Date
         child: AbsorbPointer(
-                    child: _buildInputField(context, 'Start Date',
-                      TextEditingController(text: _startDateList[index]),
-                      _isEditing),
-                  ),
+          absorbing: !_isEditing, // Disable interaction when not editing
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: Text(
+              _startDateList[index], // Display the selected start date
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
       ),
     ),
     const SizedBox(width: 15.0),
     Expanded(
       child: GestureDetector(
-        onTap: () => _selectMonthYear(context, index, false), // End Date
+        onTap: _isEditing ? () => _selectMonthYear(context, index, false) : null, // End Date
         child: AbsorbPointer(
-                    child: _buildInputField(context, 'End Date',
-                      TextEditingController(text: _endDateList[index]),
-                      _isEditing),
-                  ),
+          absorbing: !_isEditing, // Disable interaction when not editing
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: Text(
+              _endDateList[index], // Display the selected end date
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
       ),
     ),
   ],
 ),
+
+
 
           const SizedBox(height: 15.0),
           if (_isEditing)
