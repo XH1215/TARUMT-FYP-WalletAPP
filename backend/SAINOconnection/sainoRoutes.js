@@ -34,10 +34,10 @@ router.post('/saveCVWork', saveCVWork);
 // Route to delete work experience from SAINO DB
 router.post('/deleteCVWork', deleteCVWork);
 
-// Route to save qualifications to SAINO DB
-router.post('/saveCVQuali', saveCVQuali);
+// // Route to save qualifications to SAINO DB
+// router.post('/saveCVQuali', saveCVQuali);
 
-// Route to delete a qualification from SAINO DB
-router.post('/deleteCVQualification', deleteCVQualification);
+// // Route to delete a qualification from SAINO DB
+// router.post('/deleteCVQualification', deleteCVQualification);
 
 module.exports = router;

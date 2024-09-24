@@ -40,9 +40,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   List<TextEditingController> _stateControllers = [];
   List<TextEditingController> _cityControllers = [];
   List<TextEditingController> _descriptionControllers = [];
-  List<TextEditingController> _startDateControllers = [];
-  List<TextEditingController> _endDateControllers = [];
-  List<TextEditingController> _otherIndustryControllers = [];
+  List<String> _startDateList = [];
+  List<String> _endDateList = [];
   List<bool> _isPublicControllers = [];
 
   final List<String> _industries = [
@@ -72,9 +71,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       _stateControllers.clear();
       _cityControllers.clear();
       _descriptionControllers.clear();
-      _startDateControllers.clear();
-      _endDateControllers.clear();
-      _otherIndustryControllers.clear();
+      _startDateList.clear();
+      _endDateList.clear();
       _isPublicControllers.clear();
       _addWorkExperienceEntry();
     });
@@ -165,15 +163,13 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       (index) => TextEditingController(
           text: _workExperienceEntries[index]['description']),
     );
-    _startDateControllers = List.generate(
+    _startDateList = List.generate(
       _workExperienceEntries.length,
-      (index) => TextEditingController(
-          text: _workExperienceEntries[index]['start_date']),
+      (index) => _workExperienceEntries[index]['start_date'] ?? '',
     );
-    _endDateControllers = List.generate(
+    _endDateList = List.generate(
       _workExperienceEntries.length,
-      (index) => TextEditingController(
-          text: _workExperienceEntries[index]['end_date']),
+      (index) => _workExperienceEntries[index]['end_date'] ?? '',
     );
     _isPublicControllers = List.generate(
       _workExperienceEntries.length,
@@ -182,116 +178,113 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Future<void> _saveWorkEntries() async {
-  final accountID = await _getAccountID();
-  if (accountID == null) return;
+    final accountID = await _getAccountID();
+    if (accountID == null) return;
 
-  List<Map<String, dynamic>> newWorkEntries = [];
-  List<Map<String, dynamic>> existingWorkEntries = [];
-  List<int> newEntryIndexes = []; // Track indexes of new entries
+    List<Map<String, dynamic>> newWorkEntries = [];
+    List<Map<String, dynamic>> existingWorkEntries = [];
+    List<int> newEntryIndexes = []; // Track indexes of new entries
 
-  Set<String> uniqueEntries = {}; // To store unique job title and company name combinations
+    Set<String> uniqueEntries = {}; // To store unique job title and company name combinations
 
-  for (int i = 0; i < _workExperienceEntries.length; i++) {
-    // Skip entries with default/empty values
-    if (_jobTitleControllers[i].text.isEmpty &&
-        _companyNameControllers[i].text.isEmpty &&
-        _selectedIndustries[i] == 'ACCOUNTING' && // Assuming 'ACCOUNTING' is the default
-        _countryControllers[i].text.isEmpty &&
-        _stateControllers[i].text.isEmpty &&
-        _cityControllers[i].text.isEmpty &&
-        _descriptionControllers[i].text.isEmpty &&
-        _startDateControllers[i].text.isEmpty &&
-        _endDateControllers[i].text.isEmpty) {
-      continue;
-    }
-
-    // Convert job title and company name to uppercase for comparison
-    String jobTitle = _jobTitleControllers[i].text.trim().toUpperCase();
-    String companyName = _companyNameControllers[i].text.trim().toUpperCase();
-
-    // Create a unique key by combining job title and company name
-    String entryKey = '$jobTitle-$companyName';
-
-    // Check if the combination already exists
-    if (uniqueEntries.contains(entryKey)) {
-      // Show error message if duplicate is found
-      showErrorDialog(context, 'Duplicate entry: Job Title "$jobTitle" at Company "$companyName" already exists.');
-      return;
-    }
-
-    // Add the entry key to the set
-    uniqueEntries.add(entryKey);
-
-    // Create the work entry
-    final entry = {
-      'workExpID': _workExperienceEntries[i]['workExpID'],
-      'job_title': jobTitle,
-      'company_name': companyName,
-      'industry': _selectedIndustries[i] == 'OTHERS'
-          ? _otherIndustryControllers[i].text.toUpperCase()
-          : _selectedIndustries[i]?.toUpperCase(),
-      'country': _countryControllers[i].text.trim().toUpperCase(),
-      'state': _stateControllers[i].text.trim().toUpperCase(),
-      'city': _cityControllers[i].text.trim().toUpperCase(),
-      'description': _descriptionControllers[i].text.trim().toUpperCase(),
-      'start_date': _startDateControllers[i].text.trim().toUpperCase(),
-      'end_date': _endDateControllers[i].text.trim().toUpperCase(),
-      'isPublic': _isPublicControllers[i],
-    };
-
-    if (_workExperienceEntries[i]['workExpID'] == null) {
-      newWorkEntries.add(entry);
-      newEntryIndexes.add(i); // Track the index of the new entry
-    } else {
-      existingWorkEntries.add(entry);
-    }
-  }
-
-  final body = jsonEncode({
-    'accountID': accountID,
-    'newWorkEntries': newWorkEntries,
-    'existingWorkEntries': existingWorkEntries,
-  });
-
-  try {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:3000/api/saveCVWork'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-    final response2 = await http.post(
-      Uri.parse('http://10.0.2.2:3001/api/saino/saveCVWork'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-
-    if (response.statusCode == 200 && response2.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      List updatedWorkEntries = responseData['newWorkWithID'];
-
-      // Correctly update new entries with their generated WorkExpID
-      for (int i = 0; i < newEntryIndexes.length; i++) {
-        int index = newEntryIndexes[i];
-        _workExperienceEntries[index]['workExpID'] =
-            updatedWorkEntries[i]['WorkExpID']; // Update the new WorkExpID
+    for (int i = 0; i < _workExperienceEntries.length; i++) {
+      // Skip entries with default/empty values
+      if (_jobTitleControllers[i].text.isEmpty &&
+          _companyNameControllers[i].text.isEmpty &&
+          _selectedIndustries[i] == 'ACCOUNTING' && // Assuming 'ACCOUNTING' is the default
+          _countryControllers[i].text.isEmpty &&
+          _stateControllers[i].text.isEmpty &&
+          _cityControllers[i].text.isEmpty &&
+          _descriptionControllers[i].text.isEmpty &&
+          _startDateList[i].isEmpty &&
+          _endDateList[i].isEmpty) {
+        continue;
       }
 
-      // Show success message using SnackBar
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Work experience saved successfully')),
+      // Convert job title and company name to uppercase for comparison
+      String jobTitle = _jobTitleControllers[i].text.trim().toUpperCase();
+      String companyName = _companyNameControllers[i].text.trim().toUpperCase();
+
+      // Create a unique key by combining job title and company name
+      String entryKey = '$jobTitle-$companyName';
+
+      // Check if the combination already exists
+      if (uniqueEntries.contains(entryKey)) {
+        // Show error message if duplicate is found
+        showErrorDialog(context, 'Duplicate entry: Job Title "$jobTitle" at Company "$companyName" already exists.');
+        return;
+      }
+
+      // Add the entry key to the set
+      uniqueEntries.add(entryKey);
+
+      // Create the work entry
+      final entry = {
+        'workExpID': _workExperienceEntries[i]['workExpID'],
+        'job_title': jobTitle,
+        'company_name': companyName,
+        'industry': _selectedIndustries[i]?.toUpperCase(),
+        'country': _countryControllers[i].text.trim().toUpperCase(),
+        'state': _stateControllers[i].text.trim().toUpperCase(),
+        'city': _cityControllers[i].text.trim().toUpperCase(),
+        'description': _descriptionControllers[i].text.trim().toUpperCase(),
+        'start_date': _startDateList[i],
+        'end_date': _endDateList[i],
+        'isPublic': _isPublicControllers[i],
+      };
+
+      if (_workExperienceEntries[i]['workExpID'] == null) {
+        newWorkEntries.add(entry);
+        newEntryIndexes.add(i); // Track the index of the new entry
+      } else {
+        existingWorkEntries.add(entry);
+      }
+    }
+
+    final body = jsonEncode({
+      'accountID': accountID,
+      'newWorkEntries': newWorkEntries,
+      'existingWorkEntries': existingWorkEntries,
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:3000/api/saveCVWork'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      final response2 = await http.post(
+        Uri.parse('http://10.0.2.2:3001/api/saino/saveCVWork'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
       );
 
-      devtools.log('Work entries saved successfully.');
-    } else {
-      devtools.log('Failed to save work entries. Status code: ${response.statusCode}');
-      showErrorDialog(context, 'Failed to save work entries');
-    }
-  } catch (error) {
-    devtools.log('Error saving work entries: $error');
-    showErrorDialog(context, 'Error saving work entries');
-  }
-}
+      if (response.statusCode == 200 && response2.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List updatedWorkEntries = responseData['newWorkWithID'];
 
+        // Correctly update new entries with their generated WorkExpID
+        for (int i = 0; i < newEntryIndexes.length; i++) {
+          int index = newEntryIndexes[i];
+          _workExperienceEntries[index]['workExpID'] =
+              updatedWorkEntries[i]['WorkExpID']; // Update the new WorkExpID
+        }
+
+        // Show success message using SnackBar
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Work experience saved successfully')),
+        );
+
+        devtools.log('Work entries saved successfully.');
+      } else {
+        devtools.log('Failed to save work entries. Status code: ${response.statusCode}');
+        showErrorDialog(context, 'Failed to save work entries');
+      }
+    } catch (error) {
+      devtools.log('Error saving work entries: $error');
+      showErrorDialog(context, 'Error saving work entries');
+    }
+  }
 
   void _toggleEditMode() async {
     if (_isEditing) {
@@ -324,105 +317,131 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       _stateControllers.add(TextEditingController());
       _cityControllers.add(TextEditingController());
       _descriptionControllers.add(TextEditingController());
-      _startDateControllers.add(TextEditingController());
-      _endDateControllers.add(TextEditingController());
-      _otherIndustryControllers.add(TextEditingController());
+      _startDateList.add('');
+      _endDateList.add('');
       _isPublicControllers.add(true);
     });
   }
 
   Future<void> _deleteWorkExperienceEntry(int index) async {
-  final workExpID = _workExperienceEntries[index]['workExpID'];
-  final jobTitle = _workExperienceEntries[index]['job_title'];
-  final companyName = _workExperienceEntries[index]['company_name'];
+    final workExpID = _workExperienceEntries[index]['workExpID'];
+    final jobTitle = _workExperienceEntries[index]['job_title'];
+    final companyName = _workExperienceEntries[index]['company_name'];
 
-  final confirmation = await showDialog<bool>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Delete Confirmation"),
-        content: const Text("Are you sure you want to delete this entry?"),
-        actions: [
-          TextButton(
-            child: const Text("Cancel"),
-            onPressed: () {
-              Navigator.of(context).pop(false); // Close dialog and return false
-            },
-          ),
-          TextButton(
-            child: const Text("Delete"),
-            onPressed: () {
-              Navigator.of(context).pop(true); // Close dialog and return true
-            },
-          ),
-        ],
-      );
-    },
-  );
-
-  if (confirmation == true) {
-    if (workExpID != null) {
-      try {
-        final response = await http.post(
-          Uri.parse('http://10.0.2.2:3000/api/deleteCVWork'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'workExpID': workExpID}),
+    final confirmation = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Delete Confirmation"),
+          content: const Text("Are you sure you want to delete this entry?"),
+          actions: [
+            TextButton(
+              child: const Text("Cancel"),
+              onPressed: () {
+                Navigator.of(context).pop(false); // Close dialog and return false
+              },
+            ),
+            TextButton(
+              child: const Text("Delete"),
+              onPressed: () {
+                Navigator.of(context).pop(true); // Close dialog and return true
+              },
+            ),
+          ],
         );
-        final body = jsonEncode({
-          'job_title': jobTitle,
-          'company_name': companyName,
-        });
-        final response2 = await http.post(
-          Uri.parse('http://10.0.2.2:3001/api/saino/deleteCVWork'),
-          headers: {'Content-Type': 'application/json'},
-          body: body,
-        );
-        if (response.statusCode == 200 && response2.statusCode == 200) {
-          setState(() {
-            _workExperienceEntries.removeAt(index);
-            _jobTitleControllers.removeAt(index);
-            _companyNameControllers.removeAt(index);
-            _selectedIndustries.removeAt(index);
-            _countryControllers.removeAt(index);
-            _stateControllers.removeAt(index);
-            _cityControllers.removeAt(index);
-            _descriptionControllers.removeAt(index);
-            _startDateControllers.removeAt(index);
-            _endDateControllers.removeAt(index);
-            _isPublicControllers.removeAt(index);
+      },
+    );
 
-            if (_workExperienceEntries.isEmpty) {
-              _addWorkExperienceEntry();
-            }
+    if (confirmation == true) {
+      if (workExpID != null) {
+        try {
+          final response = await http.post(
+            Uri.parse('http://10.0.2.2:3000/api/deleteCVWork'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'workExpID': workExpID}),
+          );
+          final body = jsonEncode({
+            'job_title': jobTitle,
+            'company_name': companyName,
           });
-        } else {
-          showErrorDialog(context, 'Failed to delete work entry');
-        }
-      } catch (e) {
-        showErrorDialog(context, 'Error deleting work entry: $e');
-      }
-    } else {
-      setState(() {
-        _workExperienceEntries.removeAt(index);
-        _jobTitleControllers.removeAt(index);
-        _companyNameControllers.removeAt(index);
-        _selectedIndustries.removeAt(index);
-        _countryControllers.removeAt(index);
-        _stateControllers.removeAt(index);
-        _cityControllers.removeAt(index);
-        _descriptionControllers.removeAt(index);
-        _startDateControllers.removeAt(index);
-        _endDateControllers.removeAt(index);
-        _isPublicControllers.removeAt(index);
+          final response2 = await http.post(
+            Uri.parse('http://10.0.2.2:3001/api/saino/deleteCVWork'),
+            headers: {'Content-Type': 'application/json'},
+            body: body,
+          );
+          if (response.statusCode == 200 && response2.statusCode == 200) {
+            setState(() {
+              _workExperienceEntries.removeAt(index);
+              _jobTitleControllers.removeAt(index);
+              _companyNameControllers.removeAt(index);
+              _selectedIndustries.removeAt(index);
+              _countryControllers.removeAt(index);
+              _stateControllers.removeAt(index);
+              _cityControllers.removeAt(index);
+              _descriptionControllers.removeAt(index);
+              _startDateList.removeAt(index);
+              _endDateList.removeAt(index);
+              _isPublicControllers.removeAt(index);
 
-        if (_workExperienceEntries.isEmpty) {
-          _addWorkExperienceEntry();
+              if (_workExperienceEntries.isEmpty) {
+                _addWorkExperienceEntry();
+              }
+            });
+          } else {
+            showErrorDialog(context, 'Failed to delete work entry');
+          }
+        } catch (e) {
+          showErrorDialog(context, 'Error deleting work entry: $e');
+        }
+      } else {
+        setState(() {
+          _workExperienceEntries.removeAt(index);
+          _jobTitleControllers.removeAt(index);
+          _companyNameControllers.removeAt(index);
+          _selectedIndustries.removeAt(index);
+          _countryControllers.removeAt(index);
+          _stateControllers.removeAt(index);
+          _cityControllers.removeAt(index);
+          _descriptionControllers.removeAt(index);
+          _startDateList.removeAt(index);
+          _endDateList.removeAt(index);
+          _isPublicControllers.removeAt(index);
+
+          if (_workExperienceEntries.isEmpty) {
+            _addWorkExperienceEntry();
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _selectMonthYear(BuildContext context, int index, bool isStart) async {
+    DateTime? selectedDate = DateTime.now();
+    if (isStart) {
+      selectedDate = DateTime.tryParse(_startDateList[index]) ?? DateTime.now();
+    } else {
+      selectedDate = DateTime.tryParse(_endDateList[index]) ?? DateTime.now();
+    }
+
+    final DateTime? picked = await showMonthYearPicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (picked != null) {
+      setState(() {
+        String formattedDate = '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
+        if (isStart) {
+          _startDateList[index] = formattedDate; // Save as year-month
+        } else {
+          _endDateList[index] = formattedDate; // Save as year-month
         }
       });
     }
   }
-}
-
+  
 
   @override
   Widget build(BuildContext context) {
@@ -435,8 +454,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        title:
-            Text('Work Experience', style: AppWidget.headlineTextFieldStyle()),
+        title: Text('Work Experience', style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Container(
         color: Colors.white,
@@ -461,8 +479,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
                     onPressed: _addWorkExperienceEntry,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF171B63),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40.0, vertical: 15.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
@@ -487,8 +504,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               onPressed: _toggleEditMode,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF171B63),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 60.0, vertical: 15.0),
+                padding: const EdgeInsets.symmetric(horizontal: 60.0, vertical: 15.0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -536,37 +552,42 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               ],
             ),
           ),
-          _buildInputField(
-              context, 'Job Title', _jobTitleControllers[index], _isEditing),
+          _buildInputField(context, 'Job Title', _jobTitleControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Company Name',
-              _companyNameControllers[index], _isEditing),
+          _buildInputField(context, 'Company Name', _companyNameControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildDropdownField(context, 'Industry', _industries, index,
-              editable: _isEditing),
+          _buildDropdownField(context, 'Industry', _industries, index, editable: _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(
-              context, 'Country', _countryControllers[index], _isEditing),
+          _buildInputField(context, 'Country', _countryControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(
-              context, 'State', _stateControllers[index], _isEditing),
+          _buildInputField(context, 'State', _stateControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(
-              context, 'City', _cityControllers[index], _isEditing),
+          _buildInputField(context, 'City', _cityControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Description',
-              _descriptionControllers[index], _isEditing),
+          _buildInputField(context, 'Description', _descriptionControllers[index], _isEditing),
           const SizedBox(height: 15.0),
           Row(
             children: [
               Expanded(
-                child: _buildInputField(context, 'Start Date',
-                    _startDateControllers[index], _isEditing),
+                child: GestureDetector(
+                  onTap: () => _selectMonthYear(context, index, true), // Start Date
+                  child: AbsorbPointer(
+                    child: _buildInputField(context, 'Start Date',
+                      TextEditingController(text: _startDateList[index]),
+                      _isEditing),
+                  ),
+                ),
               ),
               const SizedBox(width: 15.0),
               Expanded(
-                child: _buildInputField(context, 'End Date',
-                    _endDateControllers[index], _isEditing),
+                child: GestureDetector(
+                  onTap: () => _selectMonthYear(context, index, false), // End Date
+                  child: AbsorbPointer(
+                    child: _buildInputField(context, 'End Date',
+                      TextEditingController(text: _endDateList[index]),
+                      _isEditing),
+                  ),
+                ),
               ),
             ],
           ),
@@ -648,4 +669,82 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       ],
     );
   }
+}
+
+// Month-Year Picker Function
+Future<DateTime?> showMonthYearPicker({
+  required BuildContext context,
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) {
+  return showDialog<DateTime>(
+    context: context,
+    builder: (BuildContext context) {
+      DateTime selectedDate = initialDate;
+
+      return AlertDialog(
+        title: const Text('Select Month and Year'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Month'),
+              trailing: DropdownButton<int>(
+                value: selectedDate.month,
+                items: List.generate(12, (index) {
+                  return DropdownMenuItem(
+                    value: index + 1,
+                    child: Text(
+                      "${index + 1}",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  );
+                }),
+                onChanged: (value) {
+                  if (value != null) {
+                    selectedDate = DateTime(selectedDate.year, value);
+                  }
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('Year'),
+              trailing: DropdownButton<int>(
+                value: selectedDate.year,
+                items: List.generate(lastDate.year - firstDate.year + 1, (index) {
+                  return DropdownMenuItem(
+                    value: firstDate.year + index,
+                    child: Text(
+                      "${firstDate.year + index}",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  );
+                }),
+                onChanged: (value) {
+                  if (value != null) {
+                    selectedDate = DateTime(value, selectedDate.month);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () {
+              Navigator.of(context).pop(selectedDate);
+            },
+          ),
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
 }

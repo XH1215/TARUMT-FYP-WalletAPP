@@ -49,8 +49,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   List<TextEditingController> _instituteCountryControllers = [];
   List<TextEditingController> _instituteStateControllers = [];
   List<TextEditingController> _instituteCityControllers = [];
-  List<TextEditingController> _startDateControllers = [];
-  List<TextEditingController> _endDateControllers = [];
+  List<String> _startDateList = [];
+  List<String> _endDateList = [];
   List<bool> _isPublicList = [];
   bool _isEditing = false;
 
@@ -70,8 +70,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _instituteCountryControllers.clear();
       _instituteStateControllers.clear();
       _instituteCityControllers.clear();
-      _startDateControllers.clear();
-      _endDateControllers.clear();
+      _startDateList.clear();
+      _endDateList.clear();
       _isPublicList.clear();
       _addEducationEntry();
     });
@@ -109,8 +109,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             _instituteCountryControllers.clear();
             _instituteStateControllers.clear();
             _instituteCityControllers.clear();
-            _startDateControllers.clear();
-            _endDateControllers.clear();
+            _startDateList.clear();
+            _endDateList.clear();
             _isPublicList.clear();
 
             if (data.isNotEmpty) {
@@ -128,10 +128,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                     .add(TextEditingController(text: entry['institute_state']));
                 _instituteCityControllers
                     .add(TextEditingController(text: entry['institute_city']));
-                _startDateControllers
-                    .add(TextEditingController(text: entry['start_date']));
-                _endDateControllers
-                    .add(TextEditingController(text: entry['end_date']));
+                _startDateList.add(entry['start_date'] ?? '');
+                _endDateList.add(entry['end_date'] ?? '');
               }
             } else {
               _addEducationEntry();
@@ -173,127 +171,124 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _instituteCountryControllers.add(TextEditingController());
       _instituteStateControllers.add(TextEditingController());
       _instituteCityControllers.add(TextEditingController());
-      _startDateControllers.add(TextEditingController());
-      _endDateControllers.add(TextEditingController());
+      _startDateList.add('');
+      _endDateList.add('');
       _isPublicList.add(true);
     });
   }
 
   Future<void> _saveEducationEntries() async {
-  final accountID = await _getAccountID();
-  if (accountID == null) return;
+    final accountID = await _getAccountID();
+    if (accountID == null) return;
 
-  List<Map<String, dynamic>> newEducationEntries = [];
-  List<Map<String, dynamic>> existingEducationEntries = [];
-  List<int> newEntryIndexes = []; // Keep track of new entries' indexes
+    List<Map<String, dynamic>> newEducationEntries = [];
+    List<Map<String, dynamic>> existingEducationEntries = [];
+    List<int> newEntryIndexes = []; // Keep track of new entries' indexes
 
-  // Convert existing entries to a set of unique combinations for validation
-  Set<String> existingEntries = _educationEntries.map((entry) {
-    return "${entry['level']?.toUpperCase()}_${entry['field_of_study']?.toUpperCase()}_${entry['institute_name']?.toUpperCase()}";
-  }).toSet();
+    // Convert existing entries to a set of unique combinations for validation
+    Set<String> existingEntries = _educationEntries.map((entry) {
+      return "${entry['level']?.toUpperCase()}_${entry['field_of_study']?.toUpperCase()}_${entry['institute_name']?.toUpperCase()}";
+    }).toSet();
 
-  for (int i = 0; i < _educationEntries.length; i++) {
-    // Check for default or empty values and skip saving this entry if found
-    if (_selectedLevels[i] == null ||
-        _fieldOfStudyControllers[i].text.isEmpty ||
-        _instituteNameControllers[i].text.isEmpty ||
-        _instituteCountryControllers[i].text.isEmpty ||
-        _instituteStateControllers[i].text.isEmpty ||
-        _instituteCityControllers[i].text.isEmpty ||
-        _startDateControllers[i].text.isEmpty ||
-        _endDateControllers[i].text.isEmpty) {
-      continue;
-    }
-
-    // Create a unique identifier for each entry to check for duplicates
-    String entryKey = "${_selectedLevels[i]?.toUpperCase()}_${_fieldOfStudyControllers[i].text.toUpperCase()}_${_instituteNameControllers[i].text.toUpperCase()}";
-
-    // Check if the combination of level, field of study, and institute name is already saved
-    if (existingEntries.contains(entryKey) && _educationEntries[i]['eduBacID'] == null) {
-      String selectedLevel = _selectedLevels[i]?.toUpperCase() ?? 'Unknown Level'; // Get the selected level
-      String fieldOfStudy = _fieldOfStudyControllers[i].text.trim().toUpperCase(); // Get the field of study
-  
-      // Display the specific error message
-      showErrorDialog(
-        context,
-        'Duplicate entry: $selectedLevel in $fieldOfStudy.'
-      );
-      continue; // Skip saving this duplicate entry
-    }
-
-    // Mark the entry as unique by adding it to the set
-    existingEntries.add(entryKey);
-
-    // Convert all input fields to uppercase before saving
-    final entry = {
-      'eduBacID': _educationEntries[i]['eduBacID'],
-      'level': _selectedLevels[i]?.toUpperCase(),
-      'field_of_study': _fieldOfStudyControllers[i].text.toUpperCase(),
-      'institute_name': _instituteNameControllers[i].text.toUpperCase(),
-      'institute_country': _instituteCountryControllers[i].text.toUpperCase(),
-      'institute_state': _instituteStateControllers[i].text.toUpperCase(),
-      'institute_city': _instituteCityControllers[i].text.toUpperCase(),
-      'start_date': _startDateControllers[i].text.toUpperCase(),
-      'end_date': _endDateControllers[i].text.toUpperCase(),
-      'isPublic': _isPublicList[i],
-    };
-
-    if (_educationEntries[i]['eduBacID'] == null) {
-      newEducationEntries.add(entry);
-      newEntryIndexes.add(i); // Track the index of new entries in _educationEntries
-    } else {
-      existingEducationEntries.add(entry);
-    }
-  }
-
-  final body = jsonEncode({
-    'accountID': accountID,
-    'newEducationEntries': newEducationEntries,
-    'existingEducationEntries': existingEducationEntries,
-  });
-
-  try {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:3000/api/saveCVEducation'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-    final response2 = await http.post(
-      Uri.parse('http://10.0.2.2:3001/api/saino/saveCVEducation'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-
-    if (response.statusCode == 200 && response2.statusCode == 200) {
-      // Parse the response to get the new EduBacID entries
-      final responseData = jsonDecode(response.body);
-      List updatedEducations = responseData['newEducationEntriesWithID'];
-
-      // Correctly update only the new entries in _educationEntries
-      for (int i = 0; i < newEntryIndexes.length; i++) {
-        int index = newEntryIndexes[i]; // Get the index of the new entry
-        _educationEntries[index]['eduBacID'] =
-            updatedEducations[i]['EduBacID']; // Update with correct EduBacID
-        devtools.log("Added EduBacID to new entry at index: $index");
+    for (int i = 0; i < _educationEntries.length; i++) {
+      // Check for default or empty values and skip saving this entry if found
+      if (_selectedLevels[i] == null ||
+          _fieldOfStudyControllers[i].text.isEmpty ||
+          _instituteNameControllers[i].text.isEmpty ||
+          _instituteCountryControllers[i].text.isEmpty ||
+          _instituteStateControllers[i].text.isEmpty ||
+          _instituteCityControllers[i].text.isEmpty ||
+          _startDateList[i].isEmpty ||
+          _endDateList[i].isEmpty) {
+        continue;
       }
 
-      devtools.log('Education entries saved successfully.');
-      setState(() {
-        _isEditing = false;
-      });
-    } else {
-      devtools.log(
-          'Failed to save education entries. Status code: ${response.statusCode}');
-      showErrorDialog(context, 'Failed to save education entries');
+      // Create a unique identifier for each entry to check for duplicates
+      String entryKey = "${_selectedLevels[i]?.toUpperCase()}_${_fieldOfStudyControllers[i].text.toUpperCase()}_${_instituteNameControllers[i].text.toUpperCase()}";
+
+      // Check if the combination of level, field of study, and institute name is already saved
+      if (existingEntries.contains(entryKey) && _educationEntries[i]['eduBacID'] == null) {
+        String selectedLevel = _selectedLevels[i]?.toUpperCase() ?? 'Unknown Level'; // Get the selected level
+        String fieldOfStudy = _fieldOfStudyControllers[i].text.trim().toUpperCase(); // Get the field of study
+  
+        // Display the specific error message
+        showErrorDialog(
+          context,
+          'Duplicate entry: $selectedLevel in $fieldOfStudy.'
+        );
+        continue; // Skip saving this duplicate entry
+      }
+
+      // Mark the entry as unique by adding it to the set
+      existingEntries.add(entryKey);
+
+      // Convert all input fields to uppercase before saving
+      final entry = {
+        'eduBacID': _educationEntries[i]['eduBacID'],
+        'level': _selectedLevels[i]?.toUpperCase(),
+        'field_of_study': _fieldOfStudyControllers[i].text.toUpperCase(),
+        'institute_name': _instituteNameControllers[i].text.toUpperCase(),
+        'institute_country': _instituteCountryControllers[i].text.toUpperCase(),
+        'institute_state': _instituteStateControllers[i].text.toUpperCase(),
+        'institute_city': _instituteCityControllers[i].text.toUpperCase(),
+        'start_date': _startDateList[i],
+        'end_date': _endDateList[i],
+        'isPublic': _isPublicList[i],
+      };
+
+      if (_educationEntries[i]['eduBacID'] == null) {
+        newEducationEntries.add(entry);
+        newEntryIndexes.add(i); // Track the index of new entries in _educationEntries
+      } else {
+        existingEducationEntries.add(entry);
+      }
     }
-  } catch (error) {
-    devtools.log('Error saving education entries: $error');
-    showErrorDialog(context, 'Error saving education entries');
+
+    final body = jsonEncode({
+      'accountID': accountID,
+      'newEducationEntries': newEducationEntries,
+      'existingEducationEntries': existingEducationEntries,
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:3000/api/saveCVEducation'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      final response2 = await http.post(
+        Uri.parse('http://10.0.2.2:3001/api/saino/saveCVEducation'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200 && response2.statusCode == 200) {
+        // Parse the response to get the new EduBacID entries
+        final responseData = jsonDecode(response.body);
+        List updatedEducations = responseData['newEducationEntriesWithID'];
+
+        // Correctly update only the new entries in _educationEntries
+        for (int i = 0; i < newEntryIndexes.length; i++) {
+          int index = newEntryIndexes[i]; // Get the index of the new entry
+          _educationEntries[index]['eduBacID'] =
+              updatedEducations[i]['EduBacID']; // Update with correct EduBacID
+          devtools.log("Added EduBacID to new entry at index: $index");
+        }
+
+        devtools.log('Education entries saved successfully.');
+        setState(() {
+          _isEditing = false;
+        });
+      } else {
+        devtools.log(
+            'Failed to save education entries. Status code: ${response.statusCode}');
+        showErrorDialog(context, 'Failed to save education entries');
+      }
+    } catch (error) {
+      devtools.log('Error saving education entries: $error');
+      showErrorDialog(context, 'Error saving education entries');
+    }
   }
-}
-
-
-
 
   void _deleteEducationEntry(int index) async {
     final eduBacID = _educationEntries[index]['eduBacID'];
@@ -353,8 +348,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
               _instituteCountryControllers.removeAt(index);
               _instituteStateControllers.removeAt(index);
               _instituteCityControllers.removeAt(index);
-              _startDateControllers.removeAt(index);
-              _endDateControllers.removeAt(index);
+              _startDateList.removeAt(index);
+              _endDateList.removeAt(index);
               _isPublicList.removeAt(index);
 
               if (_educationEntries.isEmpty) {
@@ -379,8 +374,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         _instituteCountryControllers.removeAt(index);
         _instituteStateControllers.removeAt(index);
         _instituteCityControllers.removeAt(index);
-        _startDateControllers.removeAt(index);
-        _endDateControllers.removeAt(index);
+        _startDateList.removeAt(index);
+        _endDateList.removeAt(index);
         _isPublicList.removeAt(index);
 
         if (_educationEntries.isEmpty) {
@@ -391,18 +386,46 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   }
 
   void _toggleEditMode() async {
-  if (_isEditing) {
-    await _saveEducationEntries(); // Save entries first
-    setState(() {
-      _isEditing = false; // Turn off editing mode after saving
-    });
-  } else {
-    setState(() {
-      _isEditing = true; // Turn on editing mode when "Edit" is clicked
-    });
+    if (_isEditing) {
+      await _saveEducationEntries(); // Save entries first
+      setState(() {
+        _isEditing = false; // Turn off editing mode after saving
+      });
+    } else {
+      setState(() {
+        _isEditing = true; // Turn on editing mode when "Edit" is clicked
+      });
+    }
   }
-}
 
+  Future<void> _selectMonthYear(BuildContext context, int index, bool isStart) async {
+    DateTime? selectedDate = DateTime.now();
+    if (isStart) {
+      selectedDate = DateTime.tryParse(_startDateList[index]) ?? DateTime.now();
+    } else {
+      selectedDate = DateTime.tryParse(_endDateList[index]) ?? DateTime.now();
+    }
+
+    final DateTime? picked = await showMonthYearPicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (picked != null) {
+      setState(() {
+        String formattedDate = '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
+        if (isStart) {
+          _startDateList[index] = formattedDate; // Save as year-month
+        } else {
+          _endDateList[index] = formattedDate; // Save as year-month
+        }
+      });
+    }
+  }
+
+  
 
   Widget _buildInputSection(BuildContext context, int index) {
     return Container(
@@ -455,18 +478,31 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
               _instituteCityControllers[index], _isEditing),
           const SizedBox(height: 15.0),
           Row(
-            children: [
-              Expanded(
-                child: _buildInputField(context, 'Start Date',
-                    _startDateControllers[index], _isEditing),
-              ),
-              const SizedBox(width: 15.0),
-              Expanded(
-                child: _buildInputField(context, 'End Date',
-                    _endDateControllers[index], _isEditing),
-              ),
-            ],
-          ),
+  children: [
+    Expanded(
+      child: GestureDetector(
+        onTap: () => _selectMonthYear(context, index, true), // Start Date
+        child: AbsorbPointer(
+                    child: _buildInputField(context, 'Start Date',
+                      TextEditingController(text: _startDateList[index]),
+                      _isEditing),
+                  ),
+      ),
+    ),
+    const SizedBox(width: 15.0),
+    Expanded(
+      child: GestureDetector(
+        onTap: () => _selectMonthYear(context, index, false), // End Date
+        child: AbsorbPointer(
+                    child: _buildInputField(context, 'End Date',
+                      TextEditingController(text: _endDateList[index]),
+                      _isEditing),
+                  ),
+      ),
+    ),
+  ],
+),
+
           const SizedBox(height: 15.0),
           if (_isEditing)
             Row(
@@ -622,4 +658,82 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       ),
     );
   }
+}
+
+// Month-Year Picker Function
+Future<DateTime?> showMonthYearPicker({
+  required BuildContext context,
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) {
+  return showDialog<DateTime>(
+    context: context,
+    builder: (BuildContext context) {
+      DateTime selectedDate = initialDate;
+
+      return AlertDialog(
+        title: const Text('Select Month and Year'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Month'),
+              trailing: DropdownButton<int>(
+                value: selectedDate.month,
+                items: List.generate(12, (index) {
+                  return DropdownMenuItem(
+                    value: index + 1,
+                    child: Text(
+                      "${index + 1}",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  );
+                }),
+                onChanged: (value) {
+                  if (value != null) {
+                    selectedDate = DateTime(selectedDate.year, value);
+                  }
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('Year'),
+              trailing: DropdownButton<int>(
+                value: selectedDate.year,
+                items: List.generate(lastDate.year - firstDate.year + 1, (index) {
+                  return DropdownMenuItem(
+                    value: firstDate.year + index,
+                    child: Text(
+                      "${firstDate.year + index}",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  );
+                }),
+                onChanged: (value) {
+                  if (value != null) {
+                    selectedDate = DateTime(value, selectedDate.month);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () {
+              Navigator.of(context).pop(selectedDate);
+            },
+          ),
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
 }

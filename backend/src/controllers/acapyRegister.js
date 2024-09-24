@@ -4,15 +4,29 @@ const sql = require('mssql');
 // ACA-Py API endpoint configuration
 const acaPyBaseUrl = 'http://localhost:7011';  // Issuer API URL || holder is 7011
 
+// Database configuration (replace with your actual dbConfig)
+const dbConfig = require('../config/dbConfigWallet');
+
+// Initialize SQL connection pool
+let poolPromise = sql.connect(dbConfig)
+    .then(pool => {
+        console.log('Connected to MSSQL');
+        return pool;
+    })
+    .catch(err => {
+        console.error('Database Connection Failed! Bad Config: ', err);
+        process.exit(1);
+    });
+
 //-----------------------------------------------------------------------------//
 // Main function to create wallet and DID
 async function createWalletandDID(req, res) {
-    const { email, password } = req.body; // Changed from username to email
+    const { email, password } = req.body;
 
     try {
         // Step 1: Create a wallet for the holder
         const wallet = await createWallet(email, password);
-        const walletID = wallet.wallet_id;
+        const walletid = wallet.wallet_id;
         const authtoken = wallet.token;  // Get auth token
 
         // Step 2: Create DID for the wallet 
@@ -24,38 +38,36 @@ async function createWalletandDID(req, res) {
         await registerDIDatVon(did, verkey);
 
         // Step 4: Make DID public
-        const publicDID = await makeDidPublic(authtoken, did); 
-        
-        // Step 5: Store key and DID into the database
-        await storeWalletData(email, walletID, publicDID); // Changed username to email
+        const publicDID = await makeDidPublic(authtoken, did);
+
+        // Step 5: Store wallet key and public DID in the database
+        await storeWalletData(email, walletid, publicDID);
 
         // Step 6: Return success response with DID and verkey
-        return {
+        res.status(200).json({
             message: 'DID and wallet created successfully',
             did,  // Return DID
             verkey,  // Return Verkey
-        };
+        });
     } catch (error) {
         console.error('Error:', error.message);
-        throw new Error('Failed to create wallet and DID');
+        res.status(500).json({ message: 'Failed to create wallet and DID' });
     }
 }
 
-
 // Function to store wallet key and public DID in the database
-async function storeWalletData(email, walletID, publicDid) {
+async function storeWalletData(email, walletid, publicDid) {
     try {
-        // Define the SQL query for inserting data
-        const query = `INSERT INTO Wallets (wallet_id, public_did, Email_Address) VALUES (@walletID, @publicDid, @Email_Address)`;
+        const pool = await poolPromise;  // Get connection from pool
+        const request = pool.request();  // Create a new request using the pool connection
 
+        const query = `INSERT INTO Wallets (wallet_id, public_did, Email_Address) VALUES (@wallet_ID, @publicDid, @Email_Address)`;
         // Create a new request object to execute queries
-        const request = new sql.Request();
-
         // Parameterize the query to prevent SQL injection
         await request
-            .input('walletID', sql.NVarChar(255), walletID)
+            .input('wallet_id', sql.NVarChar(255), walletid)
             .input('publicDid', sql.NVarChar(255), publicDid)
-            .input('Email_Address', sql.NVarChar(200), email) // Changed from username to email
+            .input('Email_Address', sql.NVarChar(200), email) 
             .query(query);
 
         console.log('Wallet data stored successfully.');
@@ -143,8 +155,8 @@ async function createDid(jwtToken) {
 async function createWallet(walletName, wallet_key) {
     const walletData = {
         wallet_name: walletName,
-        wallet_key: wallet_key, 
-        wallet_type: 'indy',         
+        wallet_key: wallet_key,
+        wallet_type: 'indy',
     };
 
     try {
