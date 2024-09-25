@@ -18,7 +18,7 @@ async function receiveOffer(req) {
         
         // Fetch all credential offers from the ACA-Py agent (holder's side)
         const recordsResponse = await axios.get(
-            `http://localhost:7011/issue-credential-2.0/records`,
+            'http://localhost:7011/issue-credential-2.0/records',
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,  // Use the retrieved JWT token
@@ -27,55 +27,53 @@ async function receiveOffer(req) {
             }
         );
 
-        const records = recordsResponse.data.results; // Fetch the list of credential exchange records
-        console.log("Fetched records: ", records);
+        // Declare 'records' outside the 'if' block so it can be used globally in the function
+        let records = [];
+        console.log("Fetched All records: ", recordsResponse);
 
-        // Filter for the credential offer that matches the provided attributes
-        const matchingOffer = records.find(record => {
-            return record.credential_offer_dict &&
-                record.credential_offer_dict.credential_preview.attributes.some(attr => 
-                    attributes.some(reqAttr => 
-                        attr.name === reqAttr.name && attr.value === reqAttr.value
-                    )
-                );
+        // Check if the response structure is valid and extract 'results'
+        if (recordsResponse && recordsResponse.data && recordsResponse.data.results) {
+            records = recordsResponse.data.results; // Fetch the list of credential exchange records
+            console.log("Fetched records: ", records);
+        } else {
+            console.log("No records found or incorrect response structure.");
+        }
+
+        // Check if records exist and get the first record
+        if (records.length === 0) {
+            return res.status(201).json({ message: 'No credential offers found.' });
+        }
+console.log("\n\n\n\n\n\n\n fk \n\n\n\n\n\n");
+        const firstRecord = records[0]; // Get the first record
+        console.log('First record:', firstRecord);
+
+        const credExId = firstRecord.cred_ex_record.cred_ex_id; // Extract the credential exchange ID
+        
+        console.log("credExId:    \n\n" +credExId);
+
+
+        console.log("Store Done");
+
+        console.log(jwtToken);
+
+        // After fetching the credential records
+        const credentialRecordResponse = await axios.get(
+            `http://localhost:7011/credentials`,
+            {
+                headers: {
+                    Authorization: `Bearer ${jwtToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        console.log('Credential Record:', credentialRecordResponse.data);
+
+        // Respond with success message and credential data
+        res.status(200).json({
+            message: "Credential offer accepted and stored successfully.",
+            credentials: credentialRecordResponse.data.results  // Pass credentials to frontend
         });
 
-        if (matchingOffer) {
-            console.log('Matching offer found:', matchingOffer);
-
-            const credExId = matchingOffer.cred_ex_id; // Get the credential exchange ID
-
-            // Step 1: Accept the offer
-            const acceptResponse = await axios.post(
-                `http://localhost:7011/issue-credential-2.0/records/${credExId}/send-request`,
-                {},
-                {
-                    headers: {
-                        Authorization: `Bearer ${jwtToken}`,  // Use the retrieved JWT token
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            console.log('Offer accepted:', acceptResponse.data);
-
-            // Step 2: Store the credential
-            const storeResponse = await axios.post(
-                `http://localhost:7011/issue-credential-2.0/records/${credExId}/store`,
-                {},
-                {
-                    headers: {
-                        Authorization: `Bearer ${jwtToken}`,  // Use the retrieved JWT token
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            console.log('Credential stored:', storeResponse.data);
-            await sendMessage(); // Send the message after storing the credential
-        } else {
-            console.log('No matching credential offer found');
-        }
 
     } catch (error) {
         console.error('Error processing credential offer:', error.message);

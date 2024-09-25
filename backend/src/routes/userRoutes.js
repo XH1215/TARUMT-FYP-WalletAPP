@@ -8,6 +8,10 @@ const {
 const { createWalletandDID } = require('../controllers/acapyRegister');
 const { receiveConnection } = require('../controllers/receiveConnection');
 const { receiveOffer } = require('../controllers/receiveOffer');
+const { getAuthToken, storeCredential, getWalletData } = require('../controllers/storeCredential');
+
+
+
 
 const { generateQRCode, fetchQRCodesByUserId, deleteQRCode,fetchCVByQRCode } = require('../controllers/qrController');
 // receive dailog
@@ -51,6 +55,10 @@ const router = express.Router();
 router.post('/createWalletandDID', createWalletandDID);
 router.post('/receiveConnection', receiveConnection);
 router.post('/receiveOffer', receiveOffer);
+router.post('/getAuthToken', getAuthToken);
+router.post('/storeCredential', storeCredential);
+router.post('/getWalletData', getWalletData);
+
 
 // Add this route for checking credentials
 // router.get('/receiveCredentials/:email', checkForNewCredentials);

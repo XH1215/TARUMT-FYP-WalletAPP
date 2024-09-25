@@ -47,7 +47,7 @@ class HomePageState extends State<HomePage> {
 
   static final List<Widget> _pages = <Widget>[
     const SelfCredentialPage1(),
-    const ReceiveCre(),
+    const ConfirmationScreen(),
     const CVPage(),
     const Account(),
   ];
