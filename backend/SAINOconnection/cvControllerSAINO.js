@@ -235,19 +235,23 @@ module.exports.saveCVWork = async (req, res) => {
     if (!accountID) {
         return res.status(400).send('Account ID is required');
     }
-
+    console.log("Inside");
     try {
         const pool = await sainoPoolPromise;
 
         // Process existing entries (check for update or delete)
         if (existingWorkEntries && existingWorkEntries.length > 0) {
+            console.log("Inside existing");
+
             for (let entry of existingWorkEntries) {
                 const {
                     job_title, company_name, industry,
                     country, state, city, description, start_date, end_date, isPublic
                 } = entry;
+                console.log("existing 1");
 
                 if (isPublic == false) {
+                    console.log("existing ispublic false");
                     // Delete the existing work entry based on job_title and company_name if isPublic is false
                     await pool.request()
                         .input('WorkTitle', sql.NVarChar, job_title)
@@ -258,29 +262,53 @@ module.exports.saveCVWork = async (req, res) => {
                         `);
                 } else if (isPublic == true) {
                     // Update the existing work entry if isPublic is true
-                    await pool.request()
-                        .input('WorkTitle', sql.NVarChar, job_title)
-                        .input('WorkCompany', sql.NVarChar, company_name)
-                        .input('WorkIndustry', sql.NVarChar, industry)
-                        .input('WorkCountry', sql.NVarChar, country)
-                        .input('WorkState', sql.NVarChar, state)
-                        .input('WorkCity', sql.NVarChar, city)
-                        .input('WorkDescription', sql.NVarChar, description)
-                        .input('WorkStartDate', sql.NVarChar, start_date)
-                        .input('WorkEndDate', sql.NVarChar, end_date)
-                        .query(`
-                            UPDATE Work
-                            SET WorkIndustry = @WorkIndustry, WorkCountry = @WorkCountry, WorkState = @WorkState,
-                                WorkCity = @WorkCity, WorkDescription = @WorkDescription, WorkStartDate = @WorkStartDate,
-                                WorkEndDate = @WorkEndDate
-                            WHERE WorkTitle = @WorkTitle AND WorkCompany = @WorkCompany
-                        `);
+                    console.log("existingIsPublic");
+                    // Log the input parameters for debugging
+                    console.log('Updating work record with the following details:');
+                    console.log('WorkTitle:', job_title);
+                    console.log('WorkCompany:', company_name);
+                    console.log('WorkIndustry:', industry);
+                    console.log('WorkCountry:', country);
+                    console.log('WorkState:', state);
+                    console.log('WorkCity:', city);
+                    console.log('WorkDescription:', description);
+                    console.log('WorkStartDate:', start_date);
+                    console.log('WorkEndDate:', end_date);
+
+                    try {
+                        const result = await pool.request()
+                            .input('WorkTitle', sql.NVarChar, job_title)
+                            .input('WorkCompany', sql.NVarChar, company_name)
+                            .input('WorkIndustry', sql.NVarChar, industry)
+                            .input('WorkCountry', sql.NVarChar, country)
+                            .input('WorkState', sql.NVarChar, state)
+                            .input('WorkCity', sql.NVarChar, city)
+                            .input('WorkDescription', sql.NVarChar, description)
+                            .input('WorkStartDate', sql.NVarChar, start_date)
+                            .input('WorkEndDate', sql.NVarChar, end_date)
+                            .query(`
+            UPDATE Work
+            SET WorkIndustry = @WorkIndustry, WorkCountry = @WorkCountry, WorkState = @WorkState,
+                WorkCity = @WorkCity, WorkDescription = @WorkDescription, WorkStartDate = @WorkStartDate,
+                WorkEndDate = @WorkEndDate
+            WHERE WorkTitle = @WorkTitle AND WorkCompany = @WorkCompany
+        `);
+
+                        // Log the result of the query
+                        console.log('Update successful:', result);
+                    } catch (error) {
+                        // Log any error that occurs during the query
+                        console.error('Error updating work record:', error);
+                    }
+
                 }
             }
         }
 
         // Process new entries (inserts) only if isPublic is true
         if (newWorkEntries && newWorkEntries.length > 0) {
+            console.log("Inside new");
+
             for (let entry of newWorkEntries) {
                 const {
                     job_title, company_name, industry,
@@ -289,6 +317,8 @@ module.exports.saveCVWork = async (req, res) => {
 
                 // Only insert the new work entry if isPublic is true
                 if (isPublic == true) {
+                    console.log("new ispublic true");
+
                     // Check if the entry already exists based on job_title and company_name
                     const result = await pool.request()
                         .input('WorkTitle', sql.NVarChar, job_title)
@@ -333,78 +363,78 @@ module.exports.saveCVWork = async (req, res) => {
 
 
 
-// module.exports.saveCVQuali = async (req, res) => {
-//     const { accountID, qualifications } = req.body;
+module.exports.saveCVQuali = async (req, res) => {
+    const { accountID, qualifications } = req.body;
 
-//     if (!accountID) {
-//         return res.status(400).send('Account ID is required');
-//     }
+    if (!accountID) {
+        return res.status(400).send('Account ID is required');
+    }
 
-//     try {
-//         const pool = await sainoPoolPromise;
+    try {
+        const pool = await sainoPoolPromise;
 
-//         for (const qual of qualifications) {
-//             const { quaTitle, quaIssuer, quaDescription, quaAcquiredDate, isPublic } = qual;
+        for (const qual of qualifications) {
+            const { quaTitle, quaIssuer, quaDescription, quaAcquiredDate, isPublic } = qual;
 
-//             // Check if the qualification already exists by description, issuer, and acquired date
-//             const existingQualification = await pool.request()
-//                 .input('CerDescription', sql.NVarChar, quaDescription)
-//                 .input('CerIssuer', sql.NVarChar, quaIssuer)
-//                 .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
-//                 .query(`
-//                     SELECT CerID FROM Qualification
-//                     WHERE CerDescription = @CerDescription AND CerIssuer = @CerIssuer AND CerAcquiredDate = @CerAcquiredDate
-//                 `);
+            // Check if the qualification already exists by description, issuer, and acquired date
+            const existingQualification = await pool.request()
+                .input('CerDescription', sql.NVarChar, quaDescription)
+                .input('CerIssuer', sql.NVarChar, quaIssuer)
+                .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
+                .query(`
+                    SELECT CerID FROM Qualification
+                    WHERE CerDescription = @CerDescription AND CerIssuer = @CerIssuer AND CerAcquiredDate = @CerAcquiredDate
+                `);
 
-//             // If the qualification exists
-//             if (existingQualification.recordset.length > 0) {
+            // If the qualification exists
+            if (existingQualification.recordset.length > 0) {
 
-//                 if (isPublic === false) {
-//                     // Delete the existing qualification if isPublic is false
-//                     await pool.request()
-//                         .input('CerDescription', sql.NVarChar, quaDescription)
-//                         .input('CerIssuer', sql.NVarChar, quaIssuer)
-//                         .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
-//                         .query(`
-//                             DELETE FROM Qualification
-//                             WHERE CerDescription = @CerDescription AND CerIssuer = @CerIssuer AND CerAcquiredDate = @CerAcquiredDate
-//                         `);
-//                 } else {
-//                     // Update the existing qualification if isPublic is true
-//                     await pool.request()
-//                         .input('CerTitle', sql.NVarChar, quaTitle)
-//                         .input('CerIssuer', sql.NVarChar, quaIssuer)
-//                         .input('CerDescription', sql.NVarChar, quaDescription)
-//                         .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
-//                         .query(`
-//                             UPDATE Qualification
-//                             SET CerTitle = @CerTitle, CerIssuer = @CerIssuer, CerDescription = @CerDescription, CerAcquiredDate = @CerAcquiredDate
-//                             WHERE CerDescription = @CerDescription AND CerIssuer = @CerIssuer AND CerAcquiredDate = @CerAcquiredDate
-//                         `);
-//                 }
-//             } else if (isPublic === true) {
-//                 // Insert the new qualification if it doesn't exist and isPublic is true
-//                 await pool.request()
-//                     .input('UserID', sql.Int, accountID)  // Map accountID to UserID
-//                     .input('CerTitle', sql.NVarChar, quaTitle)
-//                     .input('CerIssuer', sql.NVarChar, quaIssuer)
-//                     .input('CerDescription', sql.NVarChar, quaDescription)
-//                     .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
-//                     .query(`
-//                         INSERT INTO Qualification (UserID, CerTitle, CerIssuer, CerDescription, CerAcquiredDate)
-//                         OUTPUT INSERTED.CerID
-//                         VALUES (@UserID, @CerTitle, @CerIssuer, @CerDescription, @CerAcquiredDate)
-//                     `);
-//             }
-//         }
+                if (isPublic === false) {
+                    // Delete the existing qualification if isPublic is false
+                    await pool.request()
+                        .input('CerDescription', sql.NVarChar, quaDescription)
+                        .input('CerIssuer', sql.NVarChar, quaIssuer)
+                        .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
+                        .query(`
+                            DELETE FROM Qualification
+                            WHERE CerDescription = @CerDescription AND CerIssuer = @CerIssuer AND CerAcquiredDate = @CerAcquiredDate
+                        `);
+                } else {
+                    // Update the existing qualification if isPublic is true
+                    await pool.request()
+                        .input('CerTitle', sql.NVarChar, quaTitle)
+                        .input('CerIssuer', sql.NVarChar, quaIssuer)
+                        .input('CerDescription', sql.NVarChar, quaDescription)
+                        .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
+                        .query(`
+                            UPDATE Qualification
+                            SET CerTitle = @CerTitle, CerIssuer = @CerIssuer, CerDescription = @CerDescription, CerAcquiredDate = @CerAcquiredDate
+                            WHERE CerDescription = @CerDescription AND CerIssuer = @CerIssuer AND CerAcquiredDate = @CerAcquiredDate
+                        `);
+                }
+            } else if (isPublic === true) {
+                // Insert the new qualification if it doesn't exist and isPublic is true
+                await pool.request()
+                    .input('UserID', sql.Int, accountID)  // Map accountID to UserID
+                    .input('CerTitle', sql.NVarChar, quaTitle)
+                    .input('CerIssuer', sql.NVarChar, quaIssuer)
+                    .input('CerDescription', sql.NVarChar, quaDescription)
+                    .input('CerAcquiredDate', sql.DateTime, quaAcquiredDate)
+                    .query(`
+                        INSERT INTO Qualification (UserID, CerTitle, CerIssuer, CerDescription, CerAcquiredDate)
+                        OUTPUT INSERTED.CerID
+                        VALUES (@UserID, @CerTitle, @CerIssuer, @CerDescription, @CerAcquiredDate)
+                    `);
+            }
+        }
 
-//         // Send success response
-//         res.status(200).send('Qualification data processed successfully');
-//     } catch (error) {
-//         console.error('Error processing qualification data:', error);
-//         res.status(500).send('Error occurred while processing qualification data');
-//     }
-// };
+        // Send success response
+        res.status(200).send('Qualification data processed successfully');
+    } catch (error) {
+        console.error('Error processing qualification data:', error);
+        res.status(500).send('Error occurred while processing qualification data');
+    }
+};
 
 
 

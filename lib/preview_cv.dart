@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert'; // For JSON decoding
 import 'package:http/http.dart' as http; // For making HTTP requests
 import 'dart:developer' as devtools show log;
-import 'generate_qr.dart';
 
 class ViewCV extends StatefulWidget {
   const ViewCV({super.key});
@@ -49,7 +48,7 @@ class _ViewCVState extends State<ViewCV> {
         });
       } else {
         setState(() {
-          _errorMessage = "There is no CV details.";
+          _errorMessage = "Failed to fetch CV details.";
           _isLoading = false;
         });
       }
@@ -66,7 +65,10 @@ class _ViewCVState extends State<ViewCV> {
   Future<int?> _getAccountID() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt('accountID');
+      final accountID = prefs.getInt('accountID');
+      devtools.log(
+          'Retrieved accountID: $accountID'); // Make sure this shows the correct value
+      return accountID;
     } catch (e) {
       devtools.log('Error retrieving accountID: $e');
       return null;
@@ -97,47 +99,29 @@ class _ViewCVState extends State<ViewCV> {
                     children: [
                       _buildSectionTitle(Icons.person, 'Profile Information'),
                       _buildProfileSection(_cvData!['profile']),
+                      const SizedBox(height: 20), // More space between categories
                       _buildSectionTitle(Icons.school, 'Education Information'),
                       _cvData!['education'] != null
                           ? _buildEducationSection(_cvData!['education'])
                           : const Text("No education information available."),
+                      const SizedBox(height: 20), // More space between categories
                       _buildSectionTitle(Icons.work, 'Work Experience'),
                       _cvData!['workExperience'] != null
                           ? _buildWorkSection(_cvData!['workExperience'])
                           : const Text("No work experience available."),
+                      const SizedBox(height: 20), // More space between categories
                       _buildSectionTitle(Icons.lightbulb, 'Skills'),
                       _cvData!['skills'] != null
                           ? _buildSoftSkillsSection(_cvData!['skills'])
                           : const Text("No skills information available."),
+                      const SizedBox(height: 20), // More space between categories
+
+                      // Certifications Section
                       _buildSectionTitle(Icons.star, 'Certifications'),
-                      _cvData!['certifications'] != null
-                          ? _buildCertificationSection(
-                              _cvData!['certifications'])
-                          : const Text(
-                              "No certification information available."),
-                      const SizedBox(height: 20), // Add some spacing
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GenerateQRPage(),
-                      ),
-                    );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF171B63),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 60.0, vertical: 15.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Generate QR', // Change this text as needed
-                          style: TextStyle(color: Colors.white, fontSize: 15.0),
-                        ),
-                      ),
+                      _cvData!['certification'] != null
+                          ? _buildCertificationSection(_cvData!['certification'])
+                          : const Text("No certification information available."),
+                      const SizedBox(height: 30), // Add some spacing
                     ],
                   ),
                 ),
@@ -178,12 +162,12 @@ class _ViewCVState extends State<ViewCV> {
             height: 100,
           ),
         _buildInfoBox([
-          'Name: ${profile['name']}', // Name field from the backend
-          'Age: ${profile['age']}', // Age field from the backend
-          'Email: ${profile['email']}', // Email_Address is mapped to 'email'
-          'Phone: ${profile['phone']}', // Mobile_Number is mapped to 'phone'
-          'Address: ${profile['address']}', // Address field from the backend
-          'Description: ${profile['description']}', // Description field from the backend
+          'Name: ${profile['name']}',
+          'Age: ${profile['age']}',
+          'Email: ${profile['email']}',
+          'Phone: ${profile['phone']}',
+          'Address: ${profile['address']}',
+          'Description: ${profile['description']}',
         ]),
       ],
     );
@@ -193,15 +177,20 @@ class _ViewCVState extends State<ViewCV> {
   Widget _buildEducationSection(List<dynamic> education) {
     return Column(
       children: education.map((edu) {
-        return _buildInfoBox([
-          'Level: ${edu['level']}',
-          'Field of Study: ${edu['field_of_study']}',
-          'Institute Name: ${edu['institute_name']}',
-          'Country: ${edu['institute_country']}',
-          'City: ${edu['institute_city']}',
-          'Start Date: ${edu['start_date']}',
-          'End Date: ${edu['end_date']}',
-        ]);
+        return Column(
+          children: [
+            _buildInfoBox([
+              'Level: ${edu['level']}',
+              'Field of Study: ${edu['field_of_study']}',
+              'Institute Name: ${edu['institute_name']}',
+              'Country: ${edu['institute_country']}',
+              'City: ${edu['institute_city']}',
+              'Start Date: ${edu['start_date']}',
+              'End Date: ${edu['end_date']}',
+            ]),
+            const SizedBox(height: 5), // Less space between items in the same category
+          ],
+        );
       }).toList(),
     );
   }
@@ -210,17 +199,22 @@ class _ViewCVState extends State<ViewCV> {
   Widget _buildWorkSection(List<dynamic> workExperience) {
     return Column(
       children: workExperience.map((work) {
-        return _buildInfoBox([
-          'Job Title: ${work['job_title']}',
-          'Company: ${work['company_name']}',
-          'Industry: ${work['industry']}',
-          'Country: ${work['country']}',
-          'State: ${work['state']}',
-          'City: ${work['city']}',
-          'Description: ${work['description']}',
-          'Start Date: ${work['start_date']}',
-          'End Date: ${work['end_date']}',
-        ]);
+        return Column(
+          children: [
+            _buildInfoBox([
+              'Job Title: ${work['job_title']}',
+              'Company: ${work['company_name']}',
+              'Industry: ${work['industry']}',
+              'Country: ${work['country']}',
+              'State: ${work['state']}',
+              'City: ${work['city']}',
+              'Description: ${work['description']}',
+              'Start Date: ${work['start_date']}',
+              'End Date: ${work['end_date']}',
+            ]),
+            const SizedBox(height: 5), // Less space between items in the same category
+          ],
+        );
       }).toList(),
     );
   }
@@ -229,10 +223,15 @@ class _ViewCVState extends State<ViewCV> {
   Widget _buildSoftSkillsSection(List<dynamic> softSkills) {
     return Column(
       children: softSkills.map((skill) {
-        return _buildInfoBox([
-          'Skill: ${skill['skill']}',
-          'Description: ${skill['description']}',
-        ]);
+        return Column(
+          children: [
+            _buildInfoBox([
+              'Skill: ${skill['skill']}',
+              'Description: ${skill['description']}',
+            ]),
+            const SizedBox(height: 5), // Less space between items in the same category
+          ],
+        );
       }).toList(),
     );
   }
@@ -245,14 +244,19 @@ class _ViewCVState extends State<ViewCV> {
 
     return Column(
       children: certifications.map((cert) {
-        return _buildInfoBox([
-          'Title: ${cert['name']}', // Using the correct key for CerName
-          'Email: ${cert['email']}', // Adding the email field
-          'Type: ${cert['type']}', // Adding the type field
-          'Issuer: ${cert['issuer']}', // Using the correct key for CerIssuer
-          'Description: ${cert['description']}', // Using the correct key for CerDescription
-          'Acquired Date: ${cert['acquiredDate']}', // Using the correct key for acquiredDate
-        ]);
+        return Column(
+          children: [
+            _buildInfoBox([
+              'Title: ${cert['name']}',
+              'Email: ${cert['email']}',
+              'Type: ${cert['type']}',
+              'Issuer: ${cert['issuer']}',
+              'Description: ${cert['description']}',
+              'Acquired Date: ${cert['acquiredDate']}',
+            ]),
+            const SizedBox(height: 5), // Less space between items in the same category
+          ],
+        );
       }).toList(),
     );
   }
@@ -260,7 +264,7 @@ class _ViewCVState extends State<ViewCV> {
   // Helper function to create a box of information
   Widget _buildInfoBox(List<String> info) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10.0),
+      margin: const EdgeInsets.symmetric(vertical: 5.0), // Less margin between items
       padding: const EdgeInsets.all(20.0),
       width: double.infinity,
       decoration: BoxDecoration(

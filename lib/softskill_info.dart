@@ -119,131 +119,93 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
   }
 
   Future<void> _saveSkills() async {
-  final accountID = await _getAccountID();
-  if (accountID == null) return;
+    final accountID = await _getAccountID();
+    if (accountID == null) return;
 
-  List<Map<String, dynamic>> newSkillEntries = [];
-  List<Map<String, dynamic>> existingSkillEntries = [];
+    List<Map<String, dynamic>> newSkillEntries = [];
+    List<Map<String, dynamic>> existingSkillEntries = [];
 
-  // Convert all existing skill names to uppercase for comparison
-  List<String> existingSkillNames = _skillEntries
-      .map((entry) => entry['SoftHighlight'].toString().toUpperCase())
-      .toList();
+    // Convert all existing skill names to uppercase for comparison
+    List<String> existingSkillNames = _skillEntries
+        .map((entry) => entry['SoftHighlight'].toString().toUpperCase())
+        .toList();
 
-  bool hasDuplicate = false;
-
-  for (int i = 0; i < _skillEntries.length; i++) {
-    if (_softSkillControllers[i].text.isEmpty ||
-        _descriptionControllers[i].text.isEmpty) {
-      continue; // Skip if fields are empty
-    }
-
-    // Convert the current skill name to uppercase for comparison
-    String currentSkillName = _softSkillControllers[i].text.toUpperCase();
-    String currentDescription = _descriptionControllers[i]
-        .text
-        .toUpperCase(); // Convert description to uppercase
-
-    // Check if the current skill name already exists (excluding the current entry being edited)
-    if (existingSkillNames.contains(currentSkillName) &&
-        _skillEntries[i]['SoftID'] == null) {
-      devtools.log("Duplicate skill found: $currentSkillName");
-
-      // Show a SnackBar to ask user to re-enter the skill name
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Duplicate skill name: $currentSkillName. Please enter a new skill name.')),
-      );
-
-      hasDuplicate = true;
-      continue; // Skip saving this duplicate entry
-    }
-
-    final entry = {
-      'SoftID': _skillEntries[i]['SoftID'],
-      'SoftHighlight': currentSkillName,
-      'SoftDescription': currentDescription, // Save description in uppercase
-      'isPublic': _isPublicList[i],
-    };
-
-    if (_skillEntries[i]['SoftID'] == null) {
-      newSkillEntries.add(entry);
-      devtools.log("New Added");
-    } else {
-      existingSkillEntries.add(entry);
-      devtools.log("Existing Added");
-    }
-  }
-
-  // If a duplicate skill name was found, exit the save process and keep edit mode active
-  if (hasDuplicate) {
-    devtools.log('Duplicate entries detected. Aborting save process.');
-    return;  // Do not change the _isEditing state, so "Save" remains active.
-  }
-
-  final body = jsonEncode({
-    'accountID': accountID,
-    'newSkillEntries': newSkillEntries,
-    'existingSkillEntries': existingSkillEntries,
-  });
-
-  try {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:3000/api/saveCVSkill'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-
-    final response2 = await http.post(
-      Uri.parse('http://10.0.2.2:3001/api/saino/saveCVSkill'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-
-    if (response.statusCode == 200 && response2.statusCode == 200) {
-      // Assume the backend returns the newly generated SoftID for newSkillEntries
-      final responseData = jsonDecode(response.body);
-      List updatedSkills = responseData['newSkillEntriesWithID'];
-
-      // Update the _skillEntries with the generated SoftID
-      for (int i = 0; i < newSkillEntries.length; i++) {
-        _skillEntries[i]['SoftID'] = updatedSkills[i]['SoftID'];
+    for (int i = 0; i < _skillEntries.length; i++) {
+      if (_softSkillControllers[i].text.isEmpty ||
+          _descriptionControllers[i].text.isEmpty) {
+        continue; // Skip if fields are empty
       }
 
-      devtools.log('Skill entries saved successfully.');
+      // Convert the current skill name to uppercase for comparison
+      String currentSkillName = _softSkillControllers[i].text.toUpperCase();
+      String currentDescription = _descriptionControllers[i]
+          .text
+          .toUpperCase(); // Convert description to uppercase
 
-      // Display "Saved successfully" message using SnackBar
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Skills saved successfully')),
-      );
+      // Check if the current skill name already exists (excluding the current entry being edited)
+      if (existingSkillNames.contains(currentSkillName) &&
+          _skillEntries[i]['SoftID'] == null) {
+        devtools.log("Duplicate skill found: $currentSkillName");
+        showErrorDialog(context, 'Duplicate skill name: $currentSkillName');
+        continue; // Skip saving this duplicate entry
+      }
 
-      // Change the Save button back to Edit button only after successful save
-      setState(() {
-        _isEditing = false;  // This will change the button back to "Edit" only on success
-      });
-    } else {
-      // If one of the requests fails, show an error message
-      devtools.log(
-          'Failed to save skill entries. Status code: ${response.statusCode}');
-      showErrorDialog(context, 'Failed to save skill entries');
+      final entry = {
+        'SoftID': _skillEntries[i]['SoftID'],
+        'SoftHighlight': currentSkillName,
+        'SoftDescription': currentDescription, // Save description in uppercase
+        'isPublic': _isPublicList[i],
+      };
 
-      // Display "Unsuccessful" message using SnackBar
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save skills')),
-      );
+      if (_skillEntries[i]['SoftID'] == null) {
+        newSkillEntries.add(entry);
+        devtools.log("New Added");
+      } else {
+        existingSkillEntries.add(entry);
+        devtools.log("Existing Added");
+      }
     }
-  } catch (error) {
-    devtools.log('Error saving skill entries: $error');
-    showErrorDialog(context, 'Error saving skill entries');
 
-    // Display "Unsuccessful" message using SnackBar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Error saving skills')),
-    );
+    final body = jsonEncode({
+      'accountID': accountID,
+      'newSkillEntries': newSkillEntries,
+      'existingSkillEntries': existingSkillEntries,
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:3000/api/saveCVSkill'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      final response2 = await http.post(
+        Uri.parse('http://10.0.2.2:3001/api/saino/saveCVSkill'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200 && response2.statusCode == 200) {
+        // Assume the backend returns the newly generated SoftID for newSkillEntries
+        final responseData = jsonDecode(response.body);
+        List updatedSkills = responseData['newSkillEntriesWithID'];
+
+        // Update the _skillEntries with the generated SoftID
+        for (int i = 0; i < newSkillEntries.length; i++) {
+          _skillEntries[i]['SoftID'] = updatedSkills[i]['SoftID'];
+        }
+
+        devtools.log('Skill entries saved successfully.');
+      } else {
+        devtools.log(
+            'Failed to save skill entries. Status code: ${response.statusCode}');
+        showErrorDialog(context, 'Failed to save skill entries');
+      }
+    } catch (error) {
+      devtools.log('Error saving skill entries: $error');
+      showErrorDialog(context, 'Error saving skill entries');
+    }
   }
-}
-
 
   void _deleteSkillEntry(int index) async {
     final softID = _skillEntries[index]['SoftID'];

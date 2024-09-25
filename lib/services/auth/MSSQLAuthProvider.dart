@@ -12,7 +12,7 @@ class MSSQLAuthProvider implements AuthProvider {
   //final String baseUrl = "http://127.0.0.1:3000/api";
 
   AuthUser? _currentUser;
-  
+
   get toWalletDB => null;
 
   @override
@@ -131,7 +131,7 @@ class MSSQLAuthProvider implements AuthProvider {
     final accountID = prefs.getInt('accountID');
     final email = prefs.getString('email');
 
-    if (accountID != null  && email != null) {
+    if (accountID != null && email != null) {
       return AuthUser(
         accountID: accountID,
         email: email,
@@ -157,9 +157,9 @@ class MSSQLAuthProvider implements AuthProvider {
         'IntelID': intelID,
         'WorkExpID': workExpID,
       };
-
+      devtools.log("\n\nPerID is : " + perID.toString() + "\n\n\n");
       final response = await http.post(
-        Uri.parse('$toWalletDB/generate-qrcode'),
+        Uri.parse('$baseUrl/generateQRCode'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -182,36 +182,10 @@ class MSSQLAuthProvider implements AuthProvider {
     }
   }
 
-  Future<Map<String, dynamic>?> searchQRCode(String qrCode) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$toWalletDB/search-qrcode'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'qrHashCode': qrCode,
-        }),
-      );
-
-      devtools.log(
-          'Search QRCode API Response: ${response.statusCode} ${response.body}');
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        return responseData;
-      } else {
-        throw GenericAuthException();
-      }
-    } catch (e) {
-      devtools.log('Search QRCode Error: $e');
-      throw GenericAuthException();
-    }
-  }
-
   Future<List<Map<String, dynamic>>> fetchQRCodesByUserId(int userId) async {
     try {
       final response = await http.post(
-        Uri.parse('$toWalletDB/fetch-qrcodes'),
+        Uri.parse('$baseUrl/fetchQRCodesByUserId'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -234,10 +208,47 @@ class MSSQLAuthProvider implements AuthProvider {
     }
   }
 
+  Future<void> deleteQRCode(int qrId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/deleteQRCode'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, int>{
+          'qrID': qrId,
+        }),
+      );
 
+      devtools.log(
+          'Delete QR Code API Response: ${response.statusCode} ${response.body}');
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete QR Code');
+      }
+    } catch (e) {
+      devtools.log('Delete QR Code Error: $e');
+      throw Exception('Error deleting QR Code');
+    }
+  }
 
+  // Function to fetch CV data by QR ID
+  Future<Map<String, dynamic>> fetchCVDataByQRCode(int qrId) async {
+    final url = Uri.parse(
+        'http://10.0.2.2:3000/api/fetchCVByQRCode'); // Change to actual API URL
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'qrId': qrId}), // Send the QR ID to the backend
+    );
 
-
-
-
+    if (response.statusCode == 200) {
+      // If the server returns a successful response, decode the JSON and return the data
+      return jsonDecode(response.body);
+    } else {
+      // If the server returns an error, throw an exception
+      throw Exception('Failed to fetch CV data.');
+    }
+  }
 }

@@ -1,8 +1,8 @@
 const sql = require('mssql');
 
 const dbConfigWallet = {
-    user: 'wallet',
-    password: 'wallet123',
+    user: 'XH',
+    password: 'System@123',
     server: '127.0.0.1',
     database: 'Wallet',
     options: {

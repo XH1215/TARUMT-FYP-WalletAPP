@@ -53,85 +53,85 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   }
 
   Future<void> _fetchProfileData() async {
-    final accountID = await _getAccountID();
-    if (accountID == null) {
-      devtools.log('No accountID found');
-      return;
-    }
+  final accountID = await _getAccountID();
+  if (accountID == null) {
+    devtools.log('No accountID found');
+    return;
+  }
 
-    devtools.log('Fetching profile for accountID: $accountID');
+  devtools.log('Fetching profile for accountID: $accountID');
 
-    try {
-      // First try to fetch the CV profile
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/getCVProfile?accountID=$accountID'),
-      );
+  try {
+    // First try to fetch the CV profile
+    final response = await http.get(
+      Uri.parse('http://10.0.2.2:3000/api/getCVProfile?accountID=$accountID'),
+    );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data.isNotEmpty) {
-          setState(() {
-            _nameController.text = data['name'] ?? '';
-            _ageController.text = data['age']?.toString() ?? '';
-            _emailController.text = data['email'] ?? '';
-            _phoneController.text = data['phone'] ?? '';
-            _addressController.text = data['address'] ?? '';
-            _descriptionController.text = data['description'] ?? '';
-          });
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data.isNotEmpty) {
+        setState(() {
+          _nameController.text = data[0]['name'] ?? '';
+          _ageController.text = data[0]['age']?.toString() ?? '';
+          _emailController.text = data[0]['email'] ?? '';
+          _phoneController.text = data[0]['phone'] ?? '';
+          _addressController.text = data[0]['address'] ?? '';
+          _descriptionController.text = data[0]['description'] ?? '';
+        });
 
-          // Load profile image if available
-          if (data['photo'] != null && data['photo'].isNotEmpty) {
-            devtools.log(data['photo'].toString());
-            try {
-              final bytes = base64Decode(data['photo'].toString());
-              final tempFile = File(
-                  '${(await getTemporaryDirectory()).path}/profile_image.png');
-              await tempFile.writeAsBytes(bytes);
-              setState(() {
-                _imageFile = XFile(tempFile.path);
-              });
-            } catch (e) {
-              devtools.log('Error decoding image: $e');
-            }
+        // Load profile image if available
+        if (data[0]['profile_image_path'] != null &&
+            data[0]['profile_image_path'].isNotEmpty) {
+          try {
+            final bytes = base64Decode(data[0]['profile_image_path']);
+            final tempFile = File(
+                '${(await getTemporaryDirectory()).path}/profile_image.png');
+            await tempFile.writeAsBytes(bytes);
+            setState(() {
+              _imageFile = XFile(tempFile.path);
+            });
+          } catch (e) {
+            devtools.log('Error decoding image: $e');
           }
-        } else {
-          // If no CV profile data, fetch from Person table
-          devtools.log("No Pic");
-          await _fetchPersonDetails(accountID);
         }
       } else {
-        devtools.log('Failed to load profile data: ${response.statusCode}');
+        // If no CV profile data, fetch from Person table
+        await _fetchPersonDetails(accountID);
       }
-    } catch (e) {
-      devtools.log('Error fetching profile data: $e');
+    } else {
+      devtools.log('Failed to load profile data: ${response.statusCode}');
     }
+  } catch (e) {
+    devtools.log('Error fetching profile data: $e');
   }
+}
 
-  Future<void> _fetchPersonDetails(int accountID) async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-            'http://10.0.2.2:3000/api/getPersonDetails?accountID=$accountID'),
-      );
+Future<void> _fetchPersonDetails(int accountID) async {
+  try {
+    final response = await http.get(
+      Uri.parse('http://10.0.2.2:3000/api/getPersonDetails?accountID=$accountID'),
+    );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data != null) {
-          setState(() {
-            _nameController.text = data['FullName'] ?? '';
-            _emailController.text = data['Email'] ?? '';
-            _phoneController.text = data['Mobile_Number'] ?? '';
-          });
-        } else {
-          devtools.log('Person details not found');
-        }
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data != null) {
+        setState(() {
+          _nameController.text = data['FullName'] ?? '';
+          _emailController.text = data['Email'] ?? '';
+          _phoneController.text = data['Mobile_Number'] ?? '';
+          // You may want to leave age, address, and description empty or set defaults
+        });
       } else {
-        devtools.log('Failed to load person details: ${response.statusCode}');
+        devtools.log('Person details not found');
       }
-    } catch (e) {
-      devtools.log('Error fetching person details: $e');
+    } else {
+      devtools.log('Failed to load person details: ${response.statusCode}');
     }
+  } catch (e) {
+    devtools.log('Error fetching person details: $e');
   }
+}
+
 
   Future<void> _pickImage() async {
     if (_isEditing) {
@@ -219,22 +219,11 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         devtools.log('Profile saved successfully');
-
-        // Show success message using SnackBar
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile saved successfully')),
-        );
       } else {
         devtools.log('Failed to save profile: ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save profile')),
-        );
       }
     } catch (e) {
       devtools.log('Error saving profile data: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error saving profile')),
-      );
     }
   }
 
@@ -242,50 +231,18 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     setState(() {
       _errorMessages['name'] =
           _nameController.text.isEmpty ? 'Name cannot be empty.' : null;
-
       _errorMessages['age'] =
-          _validateAge(_ageController.text); // Age validation
-
+          _ageController.text.isEmpty ? 'Age cannot be empty.' : null;
       _errorMessages['email'] =
-          _validateEmail(_emailController.text); // Email validation
-
+          _emailController.text.isEmpty ? 'Email cannot be empty.' : null;
       _errorMessages['phone'] =
-          _validatePhoneNumber(_phoneController.text); // Phone validation
-
+          _phoneController.text.isEmpty ? 'Phone cannot be empty.' : null;
       _errorMessages['address'] =
           _addressController.text.isEmpty ? 'Address cannot be empty.' : null;
-
       _errorMessages['description'] = _descriptionController.text.isEmpty
           ? 'Description cannot be empty.'
           : null;
     });
-  }
-
-  String? _validatePhoneNumber(String phoneNumber) {
-    if (phoneNumber.isEmpty) {
-      return 'Mobile Phone cannot be empty';
-    } else if (!RegExp(r'^01\d{8}$').hasMatch(phoneNumber)) {
-      return 'Invalid Phone Number. It should start with 01 and be 10 digits long.';
-    }
-    return null;
-  }
-
-  String? _validateEmail(String email) {
-    if (email.isEmpty) {
-      return 'Email cannot be empty';
-    } else if (!email.contains('@')) {
-      return 'Invalid Email';
-    }
-    return null;
-  }
-
-  String? _validateAge(String age) {
-    if (age.isEmpty) {
-      return 'Age cannot be empty';
-    } else if (!RegExp(r'^\d+$').hasMatch(age)) {
-      return 'Age must be a valid number.';
-    }
-    return null;
   }
 
   void _toggleEditMode() {
@@ -313,8 +270,8 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('Profile Information',
-            style: AppWidget.headlineTextFieldStyle()),
+        title:
+            Text('Profile Information', style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Container(
         color: Colors.white,
@@ -341,7 +298,8 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                             color: Colors.black)
                         : CircleAvatar(
                             radius: 80.0,
-                            backgroundImage: FileImage(File(_imageFile!.path)),
+                            backgroundImage:
+                                FileImage(File(_imageFile!.path)),
                           ),
                   ),
                 ),
@@ -349,26 +307,14 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               const SizedBox(height: 15.0),
               _buildInputField("Name", _nameController, _errorMessages['name']),
               const SizedBox(height: 15.0),
-              _buildInputField("Age", _ageController, _errorMessages['age'],
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly // Allow digits only
-                  ]),
+              _buildInputField("Age", _ageController, _errorMessages['age']),
               const SizedBox(height: 15.0),
-              _buildInputField(
-                  "Email", _emailController, _errorMessages['email']),
+              _buildInputField("Email", _emailController, _errorMessages['email']),
               const SizedBox(height: 15.0),
-              _buildInputField(
-                "Phone",
-                _phoneController,
-                _errorMessages['phone'],
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly // Allow digits only
-                ],
-                hintText: 'Mobile Phone (Eg: 01xxxxxxxx)', // Add hintText here
-              ),
+              _buildInputField("Phone", _phoneController, _errorMessages['phone']),
               const SizedBox(height: 15.0),
-              _buildInputField(
-                  "Address", _addressController, _errorMessages['address']),
+              _buildInputField("Address", _addressController,
+                  _errorMessages['address']),
               const SizedBox(height: 15.0),
               _buildInputField("Description", _descriptionController,
                   _errorMessages['description']),
@@ -404,8 +350,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   }
 
   Widget _buildInputField(
-      String label, TextEditingController controller, String? errorMessage,
-      {List<TextInputFormatter>? inputFormatters, String? hintText}) {
+      String label, TextEditingController controller, String? errorMessage) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -421,18 +366,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
-            hintText: hintText, // Add hintText here
-            hintStyle: const TextStyle(
-              // Add hintStyle here
-              color: Colors.grey,
-              fontSize: 16.0,
-              fontWeight: FontWeight.w600,
-            ),
           ),
-          keyboardType: inputFormatters != null
-              ? TextInputType.number
-              : TextInputType.text,
-          inputFormatters: inputFormatters,
         ),
         if (errorMessage != null)
           Padding(

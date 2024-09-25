@@ -40,8 +40,9 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   List<TextEditingController> _stateControllers = [];
   List<TextEditingController> _cityControllers = [];
   List<TextEditingController> _descriptionControllers = [];
-  List<String> _startDateList = [];
-  List<String> _endDateList = [];
+  List<TextEditingController> _startDateControllers = [];
+  List<TextEditingController> _endDateControllers = [];
+  List<TextEditingController> _otherIndustryControllers = [];
   List<bool> _isPublicControllers = [];
 
   final List<String> _industries = [
@@ -71,8 +72,9 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       _stateControllers.clear();
       _cityControllers.clear();
       _descriptionControllers.clear();
-      _startDateList.clear();
-      _endDateList.clear();
+      _startDateControllers.clear();
+      _endDateControllers.clear();
+      _otherIndustryControllers.clear();
       _isPublicControllers.clear();
       _addWorkExperienceEntry();
     });
@@ -123,8 +125,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         showErrorDialog(context, 'Failed to load work entries');
       }
     } catch (error) {
-      devtools.log('Error fetching work entries: $error');
-      showErrorDialog(context, 'Error fetching work entries');
+      devtools.log('No work entries: $error');
     }
   }
 
@@ -139,10 +140,42 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       (index) => TextEditingController(
           text: _workExperienceEntries[index]['company_name']),
     );
-    _selectedIndustries = List.generate(
-      _workExperienceEntries.length,
-      (index) => _workExperienceEntries[index]['industry'],
-    );
+
+    // Ensure the selected industries and other industry controllers are initialized correctly
+    devtools.log('Initializing controllers...');
+    devtools.log('Work Experience Entries: $_workExperienceEntries');
+
+    // Initialize the selected industries and other industry controllers
+    _selectedIndustries = [];
+    _otherIndustryControllers = [];
+
+    for (int index = 0; index < _workExperienceEntries.length; index++) {
+      String industry =
+          _workExperienceEntries[index]['industry']?.toUpperCase() ?? 'OTHERS';
+
+      devtools.log('Processing industry for entry $index: $industry');
+
+      if (_industries.map((i) => i.toUpperCase()).contains(industry)) {
+        devtools.log(
+            'Industry "$industry" found in the list, setting dropdown to it.');
+        _selectedIndustries
+            .add(industry); // Set the dropdown to the found industry
+        _otherIndustryControllers
+            .add(TextEditingController()); // No need for custom industry input
+      } else {
+        devtools.log(
+            'Industry "$industry" not found, setting dropdown to "Others" and custom industry value.');
+        _selectedIndustries.add('OTHERS'); // Set dropdown to 'Others'
+        _otherIndustryControllers.add(TextEditingController(
+            text: _workExperienceEntries[index]
+                ['industry'])); // Set the custom industry value
+      }
+    }
+
+    devtools.log('Selected Industries: $_selectedIndustries');
+    devtools.log(
+        'Custom Industry Controllers: ${_otherIndustryControllers.map((c) => c.text).toList()}');
+
     _countryControllers = List.generate(
       _workExperienceEntries.length,
       (index) =>
@@ -163,17 +196,19 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       (index) => TextEditingController(
           text: _workExperienceEntries[index]['description']),
     );
-    _startDateList = List.generate(
+    _startDateControllers = List.generate(
       _workExperienceEntries.length,
-      (index) => _workExperienceEntries[index]['start_date'] ?? '',
+      (index) => TextEditingController(
+          text: _workExperienceEntries[index]['start_date']),
     );
-    _endDateList = List.generate(
+    _endDateControllers = List.generate(
       _workExperienceEntries.length,
-      (index) => _workExperienceEntries[index]['end_date'] ?? '',
+      (index) => TextEditingController(
+          text: _workExperienceEntries[index]['end_date']),
     );
     _isPublicControllers = List.generate(
       _workExperienceEntries.length,
-      (index) => _workExperienceEntries[index]['isPublic'],
+      (index) => _workExperienceEntries[index]['isPublic'] ?? true,
     );
   }
 
@@ -185,19 +220,21 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     List<Map<String, dynamic>> existingWorkEntries = [];
     List<int> newEntryIndexes = []; // Track indexes of new entries
 
-    Set<String> uniqueEntries = {}; // To store unique job title and company name combinations
+    Set<String> uniqueEntries =
+        {}; // To store unique job title and company name combinations
 
     for (int i = 0; i < _workExperienceEntries.length; i++) {
       // Skip entries with default/empty values
       if (_jobTitleControllers[i].text.isEmpty &&
           _companyNameControllers[i].text.isEmpty &&
-          _selectedIndustries[i] == 'ACCOUNTING' && // Assuming 'ACCOUNTING' is the default
+          _selectedIndustries[i] ==
+              'ACCOUNTING' && // Assuming 'ACCOUNTING' is the default
           _countryControllers[i].text.isEmpty &&
           _stateControllers[i].text.isEmpty &&
           _cityControllers[i].text.isEmpty &&
           _descriptionControllers[i].text.isEmpty &&
-          _startDateList[i].isEmpty &&
-          _endDateList[i].isEmpty) {
+          _startDateControllers[i].text.isEmpty &&
+          _endDateControllers[i].text.isEmpty) {
         continue;
       }
 
@@ -211,7 +248,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       // Check if the combination already exists
       if (uniqueEntries.contains(entryKey)) {
         // Show error message if duplicate is found
-        showErrorDialog(context, 'Duplicate entry: Job Title "$jobTitle" at Company "$companyName" already exists.');
+        showErrorDialog(context,
+            'Duplicate entry: Job Title "$jobTitle" at Company "$companyName" already exists.');
         return;
       }
 
@@ -223,13 +261,15 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         'workExpID': _workExperienceEntries[i]['workExpID'],
         'job_title': jobTitle,
         'company_name': companyName,
-        'industry': _selectedIndustries[i]?.toUpperCase(),
+        'industry': _selectedIndustries[i] == 'OTHERS'
+            ? _otherIndustryControllers[i].text.toUpperCase()
+            : _selectedIndustries[i]?.toUpperCase(),
         'country': _countryControllers[i].text.trim().toUpperCase(),
         'state': _stateControllers[i].text.trim().toUpperCase(),
         'city': _cityControllers[i].text.trim().toUpperCase(),
         'description': _descriptionControllers[i].text.trim().toUpperCase(),
-        'start_date': _startDateList[i],
-        'end_date': _endDateList[i],
+        'start_date': _startDateControllers[i].text.trim().toUpperCase(),
+        'end_date': _endDateControllers[i].text.trim().toUpperCase(),
         'isPublic': _isPublicControllers[i],
       };
 
@@ -272,7 +312,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
         devtools.log('Work entries saved successfully.');
       } else {
-        devtools.log('Failed to save work entries. Status code: ${response.statusCode}');
+        devtools.log(
+            'Failed to save work entries. Status code: ${response.statusCode}');
         showErrorDialog(context, 'Failed to save work entries');
       }
     } catch (error) {
@@ -312,8 +353,9 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       _stateControllers.add(TextEditingController());
       _cityControllers.add(TextEditingController());
       _descriptionControllers.add(TextEditingController());
-      _startDateList.add('');
-      _endDateList.add('');
+      _startDateControllers.add(TextEditingController());
+      _endDateControllers.add(TextEditingController());
+      _otherIndustryControllers.add(TextEditingController());
       _isPublicControllers.add(true);
     });
   }
@@ -322,121 +364,67 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     final workExpID = _workExperienceEntries[index]['workExpID'];
     final jobTitle = _workExperienceEntries[index]['job_title'];
     final companyName = _workExperienceEntries[index]['company_name'];
-
-    final confirmation = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Delete Confirmation"),
-          content: const Text("Are you sure you want to delete this entry?"),
-          actions: [
-            TextButton(
-              child: const Text("Cancel"),
-              onPressed: () {
-                Navigator.of(context).pop(false); // Close dialog and return false
-              },
-            ),
-            TextButton(
-              child: const Text("Delete"),
-              onPressed: () {
-                Navigator.of(context).pop(true); // Close dialog and return true
-              },
-            ),
-          ],
+    if (workExpID != null) {
+      try {
+        final response = await http.post(
+          Uri.parse('http://10.0.2.2:3000/api/deleteCVWork'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'workExpID': workExpID}),
         );
-      },
-    );
-
-    if (confirmation == true) {
-      if (workExpID != null) {
-        try {
-          final response = await http.post(
-            Uri.parse('http://10.0.2.2:3000/api/deleteCVWork'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'workExpID': workExpID}),
-          );
-          final body = jsonEncode({
-            'job_title': jobTitle,
-            'company_name': companyName,
-          });
-          final response2 = await http.post(
-            Uri.parse('http://10.0.2.2:3001/api/saino/deleteCVWork'),
-            headers: {'Content-Type': 'application/json'},
-            body: body,
-          );
-          if (response.statusCode == 200 && response2.statusCode == 200) {
-            setState(() {
-              _workExperienceEntries.removeAt(index);
-              _jobTitleControllers.removeAt(index);
-              _companyNameControllers.removeAt(index);
-              _selectedIndustries.removeAt(index);
-              _countryControllers.removeAt(index);
-              _stateControllers.removeAt(index);
-              _cityControllers.removeAt(index);
-              _descriptionControllers.removeAt(index);
-              _startDateList.removeAt(index);
-              _endDateList.removeAt(index);
-              _isPublicControllers.removeAt(index);
-
-              if (_workExperienceEntries.isEmpty) {
-                _addWorkExperienceEntry();
-              }
-            });
-          } else {
-            showErrorDialog(context, 'Failed to delete work entry');
-          }
-        } catch (e) {
-          showErrorDialog(context, 'Error deleting work entry: $e');
-        }
-      } else {
-        setState(() {
-          _workExperienceEntries.removeAt(index);
-          _jobTitleControllers.removeAt(index);
-          _companyNameControllers.removeAt(index);
-          _selectedIndustries.removeAt(index);
-          _countryControllers.removeAt(index);
-          _stateControllers.removeAt(index);
-          _cityControllers.removeAt(index);
-          _descriptionControllers.removeAt(index);
-          _startDateList.removeAt(index);
-          _endDateList.removeAt(index);
-          _isPublicControllers.removeAt(index);
-
-          if (_workExperienceEntries.isEmpty) {
-            _addWorkExperienceEntry();
-          }
+        final body = jsonEncode({
+          'job_title': jobTitle,
+          'company_name': companyName,
         });
-      }
-    }
-  }
+        final response2 = await http.post(
+          Uri.parse('http://10.0.2.2:3001/api/saino/deleteCVWork'),
+          headers: {'Content-Type': 'application/json'},
+          body: body,
+        );
+        if (response.statusCode == 200 &&
+            (response2.statusCode == 200 || response2.statusCode == 404)) {
+          setState(() {
+            _workExperienceEntries.removeAt(index);
+            _jobTitleControllers.removeAt(index);
+            _companyNameControllers.removeAt(index);
+            _selectedIndustries.removeAt(index);
+            _countryControllers.removeAt(index);
+            _stateControllers.removeAt(index);
+            _cityControllers.removeAt(index);
+            _descriptionControllers.removeAt(index);
+            _startDateControllers.removeAt(index);
+            _endDateControllers.removeAt(index);
+            _isPublicControllers.removeAt(index);
 
-  Future<void> _selectMonthYear(BuildContext context, int index, bool isStart) async {
-    DateTime? selectedDate = DateTime.now();
-    if (isStart) {
-      selectedDate = DateTime.tryParse(_startDateList[index]) ?? DateTime.now();
-    } else {
-      selectedDate = DateTime.tryParse(_endDateList[index]) ?? DateTime.now();
-    }
-
-    final DateTime? picked = await showMonthYearPicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-
-    if (picked != null) {
-      setState(() {
-        String formattedDate = '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
-        if (isStart) {
-          _startDateList[index] = formattedDate; // Save as year-month
+            if (_workExperienceEntries.isEmpty) {
+              _addWorkExperienceEntry();
+            }
+          });
         } else {
-          _endDateList[index] = formattedDate; // Save as year-month
+          showErrorDialog(context, 'Failed to delete work entry');
+        }
+      } catch (e) {
+        showErrorDialog(context, 'Error deleting work entry: $e');
+      }
+    } else {
+      setState(() {
+        _workExperienceEntries.removeAt(index);
+        _jobTitleControllers.removeAt(index);
+        _companyNameControllers.removeAt(index);
+        _selectedIndustries.removeAt(index);
+        _countryControllers.removeAt(index);
+        _stateControllers.removeAt(index);
+        _cityControllers.removeAt(index);
+        _descriptionControllers.removeAt(index);
+        _startDateControllers.removeAt(index);
+        _endDateControllers.removeAt(index);
+        _isPublicControllers.removeAt(index);
+
+        if (_workExperienceEntries.isEmpty) {
+          _addWorkExperienceEntry();
         }
       });
     }
   }
-  
 
   @override
   Widget build(BuildContext context) {
@@ -449,7 +437,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('Work Experience', style: AppWidget.headlineTextFieldStyle()),
+        title:
+            Text('Work Experience', style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Container(
         color: Colors.white,
@@ -474,7 +463,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
                     onPressed: _addWorkExperienceEntry,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF171B63),
-                      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40.0, vertical: 15.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
@@ -499,7 +489,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               onPressed: _toggleEditMode,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF171B63),
-                padding: const EdgeInsets.symmetric(horizontal: 60.0, vertical: 15.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 60.0, vertical: 15.0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -547,65 +538,48 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               ],
             ),
           ),
-          _buildInputField(context, 'Job Title', _jobTitleControllers[index], _isEditing),
+          _buildInputField(
+              context, 'Job Title', _jobTitleControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Company Name', _companyNameControllers[index], _isEditing),
+          _buildInputField(context, 'Company Name',
+              _companyNameControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildDropdownField(context, 'Industry', _industries, index, editable: _isEditing),
+          _buildDropdownField(context, 'Industry', _industries, index,
+              editable: _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Country', _countryControllers[index], _isEditing),
+          _buildInputField(
+              context, 'Country', _countryControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'State', _stateControllers[index], _isEditing),
+          _buildInputField(
+              context, 'State', _stateControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'City', _cityControllers[index], _isEditing),
+          _buildInputField(
+              context, 'City', _cityControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Description', _descriptionControllers[index], _isEditing),
+          _buildInputField(context, 'Description',
+              _descriptionControllers[index], _isEditing),
           const SizedBox(height: 15.0),
-         Row(
+          Row(
   children: [
     Expanded(
-      child: GestureDetector(
-        onTap: _isEditing ? () => _selectMonthYear(context, index, true) : null, // Start Date
-        child: AbsorbPointer(
-          absorbing: !_isEditing, // Disable interaction when not editing
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            child: Text(
-              _startDateList[index], // Display the selected start date
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Use _buildInputField for Start Date
+          _buildInputField(context, 'Start Date', _startDateControllers[index], _isEditing),
+          const SizedBox(height: 15.0),
+        ],
       ),
     ),
     const SizedBox(width: 15.0),
     Expanded(
-      child: GestureDetector(
-        onTap: _isEditing ? () => _selectMonthYear(context, index, false) : null, // End Date
-        child: AbsorbPointer(
-          absorbing: !_isEditing, // Disable interaction when not editing
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            child: Text(
-              _endDateList[index], // Display the selected end date
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Use _buildInputField for End Date
+          _buildInputField(context, 'End Date', _endDateControllers[index], _isEditing),
+          const SizedBox(height: 15.0),
+        ],
       ),
     ),
   ],
@@ -631,6 +605,34 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     );
   }
 
+  Future<void> _selectMonthYear(
+      BuildContext context, int index, bool isStart) async {
+    // Parse the existing date or default to today
+    DateTime selectedDate = isStart
+        ? DateTime.tryParse(_startDateControllers[index].text) ?? DateTime.now()
+        : DateTime.tryParse(_endDateControllers[index].text) ?? DateTime.now();
+
+    final DateTime? picked = await showMonthYearPicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (picked != null) {
+      String formattedDate =
+          '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
+      setState(() {
+        if (isStart) {
+          _startDateControllers[index].text =
+              formattedDate; // Save as year-month
+        } else {
+          _endDateControllers[index].text = formattedDate; // Save as year-month
+        }
+      });
+    }
+  }
+
   Widget _buildDropdownField(
       BuildContext context, String labelText, List<String> items, int index,
       {required bool editable}) {
@@ -640,18 +642,22 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         Text(labelText, style: AppWidget.semiBoldTextFieldStyle()),
         const SizedBox(height: 10.0),
         DropdownButtonFormField<String>(
-          value: _selectedIndustries[index]?.toUpperCase(),
+          value: _selectedIndustries[index], // Set initial value as 'OTHERS'
           onChanged: editable
               ? (String? newValue) {
                   setState(() {
-                    _selectedIndustries[index] = newValue?.toUpperCase();
+                    _selectedIndustries[index] = newValue;
+                    // Clear the text when anything other than 'Others' is selected
+                    if (newValue != 'OTHERS') {
+                      _otherIndustryControllers[index].clear();
+                    }
                   });
                 }
               : null,
           items: items.map<DropdownMenuItem<String>>((String value) {
             return DropdownMenuItem<String>(
-              value: value.toUpperCase(), // Convert to uppercase here
-              child: Text(value.toUpperCase()), // Display in uppercase
+              value: value.toUpperCase(),
+              child: Text(value.toUpperCase()),
             );
           }).toList(),
           decoration: InputDecoration(
@@ -661,6 +667,34 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
           ),
         ),
+        const SizedBox(height: 10.0),
+        // Only show the text field if "Others" is selected
+        if (_selectedIndustries[index] == 'OTHERS')
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Please specify the industry',
+                  style: AppWidget.semiBoldTextFieldStyle()),
+              const SizedBox(height: 10.0),
+              TextField(
+                controller: _otherIndustryControllers[
+                    index], // Ensure this controller has the right text
+                enabled: editable,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 15.0, vertical: 15.0),
+                  hintText: 'Enter Industry',
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -691,7 +725,6 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 }
 
-// Month-Year Picker Function
 Future<DateTime?> showMonthYearPicker({
   required BuildContext context,
   required DateTime initialDate,
@@ -732,7 +765,8 @@ Future<DateTime?> showMonthYearPicker({
               title: const Text('Year'),
               trailing: DropdownButton<int>(
                 value: selectedDate.year,
-                items: List.generate(lastDate.year - firstDate.year + 1, (index) {
+                items:
+                    List.generate(lastDate.year - firstDate.year + 1, (index) {
                   return DropdownMenuItem(
                     value: firstDate.year + index,
                     child: Text(

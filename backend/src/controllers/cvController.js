@@ -191,7 +191,6 @@ module.exports.saveCVProfile = async (req, res) => {
     try {
         // Fetch the connection pool
         const pool = await poolPromise;
-        const profilePicBuffer = photo ? Buffer.from(photo, 'base64') : null;
 
         // Check if profile exists in the Profile table
         const existingProfile = await pool.request()
@@ -202,7 +201,7 @@ module.exports.saveCVProfile = async (req, res) => {
         if (existingProfile.recordset[0].count > 0) {
             await pool.request()
                 .input('AccountID', sql.Int, accountID)
-                .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
+                .input('Photo', sql.NVarChar, photo)
                 .input('Name', sql.NVarChar, name)
                 .input('Age', sql.NVarChar, age)
                 .input('Email_Address', sql.NVarChar, email_address)
@@ -218,7 +217,7 @@ module.exports.saveCVProfile = async (req, res) => {
         } else {
             await pool.request()
                 .input('AccountID', sql.Int, accountID)
-                .input('Photo', sql.VarBinary, photo)
+                .input('Photo', sql.NVarChar, photo)
                 .input('Name', sql.NVarChar, name)
                 .input('Age', sql.Int, age)
                 .input('Email_Address', sql.NVarChar, email_address)
@@ -246,38 +245,25 @@ module.exports.saveCVProfile = async (req, res) => {
 module.exports.getCVProfile = async (req, res) => {
     const accountID = req.query.accountID;
     console.log('Received AccountID:', accountID);
-    
     try {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(`
                 SELECT Name AS name, Age AS age, Email_Address AS email, Mobile_Number AS phone, 
-                       Address AS address, Description AS description, Photo AS ProfilePic 
+                    Address AS address, Description AS description, Photo AS profile_image_path 
                 FROM Profile 
-                WHERE AccountID = @accountID
-            `);
-
+                WHERE AccountID = @accountID`);
         console.log('Query Result:', result.recordset);
-
         if (result.recordset.length === 0) {
-            return res.status(404).send('No profile data found');
+            res.status(404).send('No profile data found');
         } else {
-            // Extract the profile from the recordset
-            const profile = result.recordset[0];
-
-            // Check if the profile has a ProfilePic, if so, convert it to base64
-            if (profile.ProfilePic) {
-                profile.photo = Buffer.from(profile.ProfilePic).toString('base64');
-            }
-
-            // Send the updated profile with base64 ProfilePic
-            res.json(profile);
+            res.json(result.recordset);
         }
     } catch (err) {
         console.error('Server error:', err);
         res.status(500).send('Server error');
-    }
+    }
 };
 
 // Get Default Person Info : Name, Email, Phone
@@ -813,7 +799,7 @@ module.exports.updateCertificationStatus = async (req, res) => {
               SET IsPublic = @isPublic
               WHERE AccountID = @accountID AND CerName = @certificationName
             `);
-        
+
         res.status(200).send('Public status updated successfully');
     } catch (error) {
         console.error('Error updating public status:', error);
@@ -1011,9 +997,10 @@ module.exports.showDetails = async (req, res) => {
 
         const pool = await poolPromise;
 
-        // Fetch Profile information
+        // Fetch Profile information, including PerID
         const profileQuery = `
             SELECT 
+                PerID AS perID,        -- Assuming PerID is the column for the profile ID
                 Name AS name, 
                 Age AS age, 
                 Email_Address AS email, 
@@ -1093,9 +1080,8 @@ module.exports.showDetails = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(skillsQuery);
 
-
-
-            const certificationsQuery = `
+        // Fetch Certifications information
+        const certificationsQuery = `
     SELECT 
         CerID AS cerID, 
         CerName AS name, 
@@ -1109,19 +1095,16 @@ module.exports.showDetails = async (req, res) => {
     WHERE AccountID = @accountID AND IsPublic = 1
 `;
 
-
-
         const certificationResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(certificationsQuery);
 
-
-        // Combine profile, education, work experience, and skills details into a single object
+        // Combine profile, education, work experience, skills, and certifications into a single object
         const combinedDetails = {
-            profile: userDetails,
+            profile: userDetails,  // Includes PerID
             education: educationResult.recordset,
             workExperience: workExperienceResult.recordset,
-            skills: skillsResult.recordset, // Add skills details here
+            skills: skillsResult.recordset,
             certification: certificationResult.recordset,
         };
 

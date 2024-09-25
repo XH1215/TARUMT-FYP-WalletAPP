@@ -1,10 +1,10 @@
 import 'package:firstly/education_info.dart';
 import 'package:firstly/profile_info.dart';
+import 'package:firstly/quali_info.dart';
 import 'package:firstly/softskill_info.dart';
 import 'package:firstly/work_info.dart';
-import 'package:firstly/credential2.dart';
 import 'package:flutter/material.dart';
-
+import 'credential2.dart';
 
 class SelfCredentialPage1 extends StatelessWidget {
   const SelfCredentialPage1({super.key});
@@ -52,12 +52,24 @@ class SelfCredentialPage1 extends StatelessWidget {
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (BuildContext context) {
-                      return const EducationInfoPage(); // Navigate to EducationPage
+                      return EducationInfoPage(); // Navigate to EducationPage
                     },
                   ),
                 ),
               ),
-              
+              const SizedBox(height: 20.0), // Space between boxes
+              _buildInfoBox(
+                context,
+                'images/qualification.png', // Use the same image for all boxes
+                'Certification',
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (BuildContext context) {
+                      return Credential2(); // Navigate to QualificationsPage
+                    },
+                  ),
+                ),
+              ),
               const SizedBox(height: 20.0), // Space between boxes
               _buildInfoBox(
                 context,
@@ -66,20 +78,7 @@ class SelfCredentialPage1 extends StatelessWidget {
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (BuildContext context) {
-                      return const WorkInfoPage(); // Navigate to WorkExperiencePage
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20.0), // Space between boxes
-              _buildInfoBox(
-                context,
-                'images/qualification.png',
-                'Certification',
-                () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (BuildContext context) {
-                      return Credential2(); // Navigate to SoftSkillPage
+                      return WorkInfoPage(); // Navigate to WorkExperiencePage
                     },
                   ),
                 ),
@@ -92,7 +91,7 @@ class SelfCredentialPage1 extends StatelessWidget {
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (BuildContext context) {
-                      return const SoftSkillInfoPage(); // Navigate to SoftSkillPage
+                      return SoftSkillInfoPage(); // Navigate to SoftSkillPage
                     },
                   ),
                 ),

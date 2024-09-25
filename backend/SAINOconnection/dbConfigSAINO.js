@@ -1,6 +1,6 @@
 const dbConfig = {
-    user: 'Saino',
-    password: 'Saino@123',
+    user: 'XH',
+    password: 'System@123',
     server: '127.0.0.3',
     database: 'SAINO',
     options: {
