@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'account.dart';
 import 'self_credential_page1.dart';
-import 'credential.dart';
+import 'confirmation.dart';
 import 'routes.dart';
 import 'profile_info.dart';
 import 'education_info.dart';

@@ -49,7 +49,7 @@ class _ViewCVState extends State<ViewCV> {
         });
       } else {
         setState(() {
-          _errorMessage = "Failed to fetch CV details.";
+          _errorMessage = "There is no CV details.";
           _isLoading = false;
         });
       }
