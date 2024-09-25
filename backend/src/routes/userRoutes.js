@@ -5,9 +5,11 @@ const {
     logout,
 } = require('../controllers/userController');
 
-const {createWalletandDID} = require('../controllers/acapyRegister');
-const {receiveConnection} = require('../controllers/receiveConnection');
-const {receiveOffer} = require('../controllers/receiveOffer');
+const { createWalletandDID } = require('../controllers/acapyRegister');
+const { receiveConnection } = require('../controllers/receiveConnection');
+const { receiveOffer } = require('../controllers/receiveOffer');
+const { getAuthToken, storeCredential, getWalletData } = require('../controllers/storeCredential');
+
 
 const { generateQRCode, fetchQRCodesByUserId } = require('../controllers/qrController');
 
@@ -48,8 +50,12 @@ const router = express.Router();
 
 // Receive Credential fromIssuer
 router.post('/createWalletandDID', createWalletandDID);
-router.post('/receiveConnection',receiveConnection);
-router.post('/receiveOffer',receiveOffer);
+router.post('/receiveConnection', receiveConnection);
+router.post('/receiveOffer', receiveOffer);
+router.post('/getAuthToken', getAuthToken);
+router.post('/storeCredential', storeCredential);
+router.post('/getWalletData', getWalletData);
+
 
 // Add this route for checking credentials
 // router.get('/receiveCredentials/:email', checkForNewCredentials);
@@ -100,7 +106,7 @@ router.get('/getCVQualiInfo', getCVQualiInfo);
 router.post('/updateHasCV', updateHasCV);
 router.get('/checkCV', checkCV);
 
-router.post('/showDetails', showDetails); 
+router.post('/showDetails', showDetails);
 
 
 
