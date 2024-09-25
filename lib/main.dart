@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'account.dart';
 import 'self_credential_page1.dart';
-import 'confirmation.dart';
+import 'fetch_cred.dart';
 import 'routes.dart';
 import 'profile_info.dart';
 import 'education_info.dart';
@@ -47,7 +47,7 @@ class HomePageState extends State<HomePage> {
 
   static final List<Widget> _pages = <Widget>[
     const SelfCredentialPage1(),
-    const ConfirmationScreen(),
+    const FetchConfirmation(),
     const CVPage(),
     const Account(),
   ];

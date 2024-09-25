@@ -4,14 +4,14 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
-class ConfirmationScreen extends StatefulWidget {
-  const ConfirmationScreen({super.key});
+class FetchConfirmation extends StatefulWidget {
+  const FetchConfirmation({super.key});
 
   @override
-  _ConfirmationScreenState createState() => _ConfirmationScreenState();
+  _FetchConfirmationState createState() => _FetchConfirmationState();
 }
 
-class _ConfirmationScreenState extends State<ConfirmationScreen> {
+class _FetchConfirmationState extends State<FetchConfirmation> {
   List<dynamic> credentials = [];
   bool isLoading = false;
   String? noDataMessage;
