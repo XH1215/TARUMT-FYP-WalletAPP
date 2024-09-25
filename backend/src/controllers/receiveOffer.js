@@ -39,7 +39,7 @@ async function receiveOffer(req, res) {
 
         // Step 2: Get JWT token for the user's wallet
         const jwtToken = await getAuthToken(walletData.wallet_id);
-        console.log("3");
+        console.log(jwtToken);
 
         // Fetch all credential offers from the ACA-Py agent (holder's side)
         const recordsResponse = await axios.get(
@@ -61,7 +61,7 @@ async function receiveOffer(req, res) {
             return;
         }
 
-        const firstRecord = records[3]; // Get the third record (zero-based index)
+        const firstRecord = records[0]; // Get the third record (zero-based index)
         console.log('First record:', firstRecord);
 
         const credExId = firstRecord.cred_ex_record.cred_ex_id; // Extract the credential exchange ID
@@ -100,8 +100,10 @@ async function receiveOffer(req, res) {
 
         console.log("Store Done");
 
+        console.log(jwtToken);
+
         const credentialRecordResponse = await axios.get(
-            `http://localhost:7011/credentials`, {},
+            `http://localhost:7011/credentials`,
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,
@@ -114,6 +116,7 @@ async function receiveOffer(req, res) {
 
         // Respond with success message
         res.status(200).json({ message: "Credential offer accepted and stored successfully." });
+        // credential: credentialRecordResponse.data
 
     } catch (error) {
         console.error('Error processing credential offer:', error.message);

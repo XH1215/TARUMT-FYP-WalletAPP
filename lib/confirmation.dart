@@ -41,7 +41,7 @@ class _CredentialState extends State<Credential> {
                 },
                 child: Container(
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.5, // Adjusted to 80% for smaller width
+                    maxWidth: MediaQuery.of(context).size.width * 0.7, // Adjusted to 80% for smaller width
                   ),
                   decoration: BoxDecoration(
                     border: Border.all(
