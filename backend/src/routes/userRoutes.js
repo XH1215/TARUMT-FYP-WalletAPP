@@ -10,7 +10,7 @@ const { receiveConnection } = require('../controllers/receiveConnection');
 const { receiveOffer } = require('../controllers/receiveOffer');
 const { getAuthToken, storeCredential, getWalletData } = require('../controllers/storeCredential');
 const {receiveExistedCredential} = require('../controllers/receiveExistedCredential');
-
+const {deleteCredential} = require('../controllers/deleteCredential');
 
 
 const { generateQRCode, fetchQRCodesByUserId, deleteQRCode,fetchCVByQRCode } = require('../controllers/qrController');
@@ -56,7 +56,7 @@ router.post('/storeCredential', storeCredential);
 router.post('/getWalletData', getWalletData);
 router.post('/receiveExistedCredential', receiveExistedCredential);
 
-
+router.post('/deleteCredential', deleteCredential);
 // Add this route for checking credentials
 // router.get('/receiveCredentials/:email', checkForNewCredentials);
 

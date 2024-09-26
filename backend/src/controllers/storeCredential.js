@@ -33,29 +33,9 @@ const storeCredential = async (req, res) => {
         console.log("credExId: ", credExId);
         console.log("\n\n\njwtToken:\n", jwtToken + "\n\n\n\n\n");
 
-        // // Step 1: Accept the offer
-        // const acceptResponse = await axios.post(
-        //     `http://localhost:7011/issue-credential-2.0/records/${credExId}/send-request`,
-        //     {},
-        //     {
-        //         headers: {
-        //             Authorization: `Bearer ${jwtToken}`,  // Use the JWT token from the request body
-        //             'Content-Type': 'application/json'
-        //         }
-        //     }
-        // );
-
-        // console.log("Offer accepted: ", acceptResponse.data);
-
-        // Step 2: Store the credential after a short delay
-        const requestUrl = `http://localhost:7011/issue-credential-2.0/records/${credExId}/store`;
-        console.log("Storing credential at: ", requestUrl);
-
-        // Wait for 2 seconds (if needed)
-        await wait(2000);
-
-        const storeResponse = await axios.post(
-            requestUrl,
+        // Step 1: Accept the offer
+        const acceptResponse = await axios.post(
+            `${acaPyBaseUrl}/issue-credential-2.0/records/${credExId}/send-request`,
             {},
             {
                 headers: {
@@ -64,6 +44,24 @@ const storeCredential = async (req, res) => {
                 }
             }
         );
+
+        console.log("Offer accepted: ", acceptResponse.data);
+        // Wait for 5 seconds (if needed)
+         await wait(5000);
+
+        // Step 2: Store the credential after a short delay
+        const storeResponse = await axios.post(
+            `${acaPyBaseUrl}/issue-credential-2.0/records/${credExId}/store`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${jwtToken}`,  // Use the JWT token from the request body
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+
 
         console.log("Credential stored successfully: ", storeResponse.data);
 

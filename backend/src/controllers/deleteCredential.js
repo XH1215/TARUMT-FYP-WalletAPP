@@ -1,25 +1,9 @@
 const axios = require('axios');
-const sql = require('mssql');
-const dbConfig = require('../config/dbConfigWallet');
 const acaPyBaseUrl = 'http://localhost:7011';
 
-// Initialize SQL connection pool
-let poolPromise = sql.connect(dbConfig)
-    .then(pool => {
-        console.log('Connected to MSSQL');
-        return pool;
-    })
-    .catch(err => {
-        console.error('Database Connection Failed! Bad Config: ', err);
-        process.exit(1);
-    });
 
-// Helper function to wait for a specified number of milliseconds
-function wait(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
 
-// Function to delete the credential (modified to take data from req.body)
+// Function to store the credential (modified to take data from req.body)
 const deleteCredential = async (req, res) => {
     const { credExId, jwtToken } = req.body; // Extract credExId and jwtToken from request body
 
@@ -31,17 +15,13 @@ const deleteCredential = async (req, res) => {
     try {
         console.log("Step 1: Received credExId and jwtToken from request body");
         console.log("credExId: ", credExId);
-        console.log("jwtToken: ", jwtToken);
+        console.log("\n\n\njwtToken:\n", jwtToken + "\n\n\n\n\n");
 
-        // Step 2: Delete the credential
-        const requestUrl = `http://localhost:7011/issue-credential-2.0/records/${credExId}`;
-        console.log("Deleting credential at: ", requestUrl);
-
-        // Wait for 2 seconds (if needed)
-        await wait(5000);
-
-        const deleteResponse = await axios.delete(
-            requestUrl,
+        //log the url
+        console.log(`${acaPyBaseUrl}/issue-credential-2.0/records/${credExId}`);
+        // delete
+        const delteResponse = await axios.delete(
+            `${acaPyBaseUrl}/issue-credential-2.0/records/${credExId}`,
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,  // Use the JWT token from the request body
@@ -50,19 +30,20 @@ const deleteCredential = async (req, res) => {
             }
         );
 
-        console.log("Credential deleted successfully: ", deleteResponse.data);
+        console.log("Offer deleted: ", delteResponse.data);
 
         // Send success response back to the client
         return res.status(200).json({
-            message: "Credential deleted successfully",
-            data: deleteResponse.data
+            message: "Credential delete successfully",
         });
 
     } catch (error) {
-        console.error('Error deleting credential:', error.message);
+        console.error('Error deleted credential:', error.message);
         return res.status(500).json({ error: 'Failed to delete credential' });
     }
 };
+
+
 
 // Export the deleteCredential function
 module.exports = {

@@ -287,7 +287,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                                         vertical: 8.0, horizontal: 16.0),
                                     child: ListTile(
                                       title: Text(
-                                        'DID: ${credential['credential'] != null && credential['credential']['attributes'] != null ? credential['credential']['attributes'].firstWhere((attr) => attr['name'] == 'did', orElse: () => {
+                                        'Title: ${credential['credential'] != null && credential['credential']['attributes'] != null ? credential['credential']['attributes'].firstWhere((attr) => attr['name'] == 'did', orElse: () => {
                                               'value': 'N/A'
                                             })['value'] : 'N/A'}',
                                       ),

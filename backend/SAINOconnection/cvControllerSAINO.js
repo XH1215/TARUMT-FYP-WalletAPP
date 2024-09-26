@@ -126,7 +126,6 @@ module.exports.saveCVProfile = async (req, res) => {
 
     try {
         console.log("Start save profile");
-        console.log(Photo);
         // Fetch the connection pool
         const sainoPool = await sainoPoolPromise;
 
