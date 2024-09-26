@@ -141,4 +141,4 @@ async function getWalletData(email) {
 
 
 
-module.exports = { receiveConnection };
+module.exports = { receiveConnection, getWalletData, getAuthToken};

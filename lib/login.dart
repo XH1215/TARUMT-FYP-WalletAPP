@@ -173,23 +173,7 @@ class _LoginViewState extends State<LoginView> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {
-                  // Handle forgot password
-                },
-                child: const Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    color: Color(0xFF171B63),
-                    fontSize: 15.0,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 50),
+            const SizedBox(height: 40),
             Center(
               child: ElevatedButton(
                 onPressed: _login,

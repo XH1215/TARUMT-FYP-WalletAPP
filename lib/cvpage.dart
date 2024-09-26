@@ -29,9 +29,9 @@ class CVPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               // First Box: View CV
-              _buildInfoBox(
+              _buildInfoBoxWithIcon(
                 context,
-                'images/resume.png',
+                Icons.description, // Use a relevant built-in icon
                 'View CV',
                 () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => const ViewCV()),
@@ -55,50 +55,13 @@ class CVPage extends StatelessWidget {
     );
   }
 
-  // Reusable box widget with image, label, and navigation
-  Widget _buildInfoBox(BuildContext context, String imagePath, String label, VoidCallback onTap) {
-    return Container(
-      width: 380.0,
-      height: 90.0,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Colors.grey,
-          width: 2.0,
-        ),
-        borderRadius: BorderRadius.circular(10.0),
-        color: Colors.transparent,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Image.asset(
-                imagePath,
-                width: 45.0, // Adjust width as needed
-                height: 45.0, // Adjust height as needed
-              ),
-            ),
-            const SizedBox(width: 20.0), // Space between image and text
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 20.0,
-                color: Color(0xFF171B63),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // Reusable box widget with icon, label, and navigation
-  Widget _buildInfoBoxWithIcon(BuildContext context, IconData icon, String label, VoidCallback onTap) {
+  Widget _buildInfoBoxWithIcon(
+      BuildContext context, IconData icon, String label, VoidCallback onTap) {
+    double screenWidth = MediaQuery.of(context).size.width; // Get screen width
+
     return Container(
-      width: 380.0,
+      width: screenWidth * 0.9, // Set width to 90% of screen width
       height: 90.0,
       decoration: BoxDecoration(
         border: Border.all(

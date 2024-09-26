@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'account.dart';
 import 'self_credential_page1.dart';
 import 'credentialbtn.dart';
+import 'credential2.dart';
 import 'routes.dart';
 import 'profile_info.dart';
 import 'education_info.dart';
 import 'work_info.dart';
-import 'quali_info.dart';
 import 'softskill_info.dart';
-import 'preview_cv.dart';
 import 'cvpage.dart';
 
 void main() {
@@ -28,7 +27,7 @@ class MyApp extends StatelessWidget {
         profileInfoRoute: (context) => const ProfileInfoPage(),
         educationInfoRoute: (context) => const EducationInfoPage(),
         workInfoRoute: (context) => const WorkInfoPage(),
-        qualiInfoRoute: (context) => const QualiInfoPage(),
+        qualiInfoRoute: (context) => const Credential2(),
         softSkillInfoRoute: (context) => const SoftSkillInfoPage(),
       },
     );
@@ -47,7 +46,7 @@ class HomePageState extends State<HomePage> {
 
   static final List<Widget> _pages = <Widget>[
     const SelfCredentialPage1(),
-    const ConfirmationScreen(),
+    const ReceiveCre(),
     const CVPage(),
     const Account(),
   ];

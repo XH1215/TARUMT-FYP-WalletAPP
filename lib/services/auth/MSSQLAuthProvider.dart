@@ -7,7 +7,7 @@ import 'dart:developer' as devtools show log;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MSSQLAuthProvider implements AuthProvider {
-  final String baseUrl = "http://10.0.2.2:3000/api";
+  final String baseUrl = "http://192.168.1.9:3000/api";
 
   //final String baseUrl = "http://127.0.0.1:3000/api";
 
@@ -234,7 +234,7 @@ class MSSQLAuthProvider implements AuthProvider {
   // Function to fetch CV data by QR ID
   Future<Map<String, dynamic>> fetchCVDataByQRCode(int qrId) async {
     final url = Uri.parse(
-        'http://10.0.2.2:3000/api/fetchCVByQRCode'); // Change to actual API URL
+        'http://192.168.1.9:3000/api/fetchCVByQRCode'); // Change to actual API URL
     final response = await http.post(
       url,
       headers: {

@@ -42,7 +42,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   void _togglePasswordVisibility() {
     setState(() {
@@ -62,18 +63,20 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    // Regular expression to check if the password contains at least one uppercase letter, 
+    // Regular expression to check if the password contains at least one uppercase letter,
     // one lowercase letter, one digit, and one special character.
-    final passwordRegExp = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#]).{8,}$');
+    final passwordRegExp =
+        RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#]).{8,}$');
 
     if (!passwordRegExp.hasMatch(password)) {
-      _showErrorDialog('Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 symbol.');
+      _showErrorDialog(
+          'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 symbol.');
       return;
     }
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/register'),
+        Uri.parse('http://192.168.1.9:3000/api/register'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -84,8 +87,19 @@ class _SignUpPageState extends State<SignUpPage> {
       );
 
       if (response.statusCode == 201) {
-        _showSuccessDialog();
+        _showSuccessDialog(); // Show success dialog when registration is successful
+      } else if (response.statusCode == 400) {
+        // Handle specific case where email is already in use
+        final errorMessage =
+            jsonDecode(response.body)['message'] ?? 'Unknown error';
+        _showErrorDialog('Registration failed: $errorMessage');
+      } else if (response.statusCode == 500) {
+        // Handle server errors
+        final errorMessage =
+            jsonDecode(response.body)['message'] ?? 'Server error occurred';
+        _showErrorDialog('Registration failed: $errorMessage');
       } else {
+        // Generic error handling for other status codes
         _showErrorDialog('Registration failed. Please try again.');
       }
     } catch (e) {

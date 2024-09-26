@@ -18,36 +18,63 @@ let poolPromise = sql.connect(dbConfig)
     
         try {
             const pool = await poolPromise;
+            
+            // Check if email already exists
             const userExists = await pool.request()
                 .input('email', sql.NVarChar, email)
                 .query('SELECT AccountID FROM [Account] WHERE Email = @email');
-    
+            
             if (userExists.recordset.length > 0) {
-                return res.status(400).send('Email already in use');
-            } else {
-                const hashedPassword = await bcrypt.hash(password, 10);
-                const accountInsertResult = await pool.request()
-                    .input('email', sql.NVarChar, email)
-                    .input('password', sql.NVarChar, hashedPassword)
-                    .query('INSERT INTO Account (Email, Password) OUTPUT INSERTED.AccountID VALUES (@email, @password)');
-    
-                const user = accountInsertResult.recordset[0];
-    
-                // Create wallet and DID after successful registration
-                const walletResponse = await createWalletandDID(req, res); // Call and wait for response
-                
-                // If wallet creation fails, you should handle the error
-                if (walletResponse instanceof Error) {
-                    return res.status(500).send(walletResponse.message);
-                }
-    
-                res.status(201).json({ id: user.AccountID, walletResponse });
+                // Email already exists response
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email already in use',
+                    errorCode: 'EMAIL_IN_USE',
+                });
             }
+    
+            // Hash the password
+            const hashedPassword = await bcrypt.hash(password, 10);
+    
+            // Insert new user account
+            const accountInsertResult = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .input('password', sql.NVarChar, hashedPassword)
+                .query('INSERT INTO Account (Email, Password) OUTPUT INSERTED.AccountID VALUES (@email, @password)');
+            
+            const user = accountInsertResult.recordset[0];
+    
+            // Create wallet and DID after successful registration
+            const walletResponse = await createWalletandDID(req, res); // Call and wait for response
+            
+            // If wallet creation fails, handle the error and rollback if necessary
+            if (walletResponse instanceof Error) {
+                return res.status(500).json({
+                    success: false,
+                    message: walletResponse.message,
+                    errorCode: 'WALLET_CREATION_FAILED',
+                });
+            }
+    
+            // Success response
+            res.status(201).json({
+                success: true,
+                id: user.AccountID,
+                walletResponse
+            });
         } catch (err) {
             console.error('Register Error: ', err);
-            res.status(500).send('Server error');
+    
+            // Server error response
+            res.status(500).json({
+                success: false,
+                message: 'Server error occurred',
+                errorCode: 'SERVER_ERROR',
+                error: err.message
+            });
         }
     };
+    
     
 
 const login = async (req, res) => {

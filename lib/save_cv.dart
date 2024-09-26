@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CVStorage {
-  final String apiUrl = "http://10.0.2.2:3000/api"; 
+  final String apiUrl = "http://192.168.1.9:3000/api"; 
 
   Future<void> saveCVProfile(Map<String, dynamic> profileData) async {
     try {

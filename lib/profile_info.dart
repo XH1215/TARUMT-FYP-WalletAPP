@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as devtools show log;
 import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as img;
+import 'dart:math';
 
 class ProfileInfoPage extends StatefulWidget {
   const ProfileInfoPage({super.key});
@@ -24,8 +26,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   late TextEditingController _addressController;
   late TextEditingController _descriptionController;
   bool _isEditing = false; // Track whether the user is editing
+  bool _isSaving = false; // Track whether the profile is being saved
   Map<String, String?> _errorMessages = {}; // Store error messages
-
+  bool _isLoading = true; // Track whether data is being fetched
   @override
   void initState() {
     super.initState();
@@ -53,85 +56,97 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   }
 
   Future<void> _fetchProfileData() async {
-  final accountID = await _getAccountID();
-  if (accountID == null) {
-    devtools.log('No accountID found');
-    return;
-  }
+    setState(() {
+      _isLoading = true; // Start loading
+    });
 
-  devtools.log('Fetching profile for accountID: $accountID');
+    final accountID = await _getAccountID();
+    if (accountID == null) {
+      devtools.log('No accountID found');
+      setState(() {
+        _isLoading = false; // Stop loading if there's no account ID
+      });
+      return;
+    }
 
-  try {
-    // First try to fetch the CV profile
-    final response = await http.get(
-      Uri.parse('http://10.0.2.2:3000/api/getCVProfile?accountID=$accountID'),
-    );
+    devtools.log('Fetching profile for accountID: $accountID');
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data.isNotEmpty) {
-        setState(() {
-          _nameController.text = data[0]['name'] ?? '';
-          _ageController.text = data[0]['age']?.toString() ?? '';
-          _emailController.text = data[0]['email'] ?? '';
-          _phoneController.text = data[0]['phone'] ?? '';
-          _addressController.text = data[0]['address'] ?? '';
-          _descriptionController.text = data[0]['description'] ?? '';
-        });
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://192.168.1.9:3000/api/getCVProfile?accountID=$accountID'),
+      );
 
-        // Load profile image if available
-        if (data[0]['profile_image_path'] != null &&
-            data[0]['profile_image_path'].isNotEmpty) {
-          try {
-            final bytes = base64Decode(data[0]['profile_image_path']);
-            final tempFile = File(
-                '${(await getTemporaryDirectory()).path}/profile_image.png');
-            await tempFile.writeAsBytes(bytes);
-            setState(() {
-              _imageFile = XFile(tempFile.path);
-            });
-          } catch (e) {
-            devtools.log('Error decoding image: $e');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data.isNotEmpty) {
+          setState(() {
+            _nameController.text = data['name'] ?? '';
+            _ageController.text = data['age']?.toString() ?? '';
+            _emailController.text = data['email'] ?? '';
+            _phoneController.text = data['phone'] ?? '';
+            _addressController.text = data['address'] ?? '';
+            _descriptionController.text = data['description'] ?? '';
+          });
+
+          // Load profile image if available
+          if (data['Photo'] != null && data['Photo'].isNotEmpty) {
+            try {
+              final bytes = base64Decode(data['Photo']);
+              final tempFile =
+                  File('${(await getTemporaryDirectory()).path}/Photo.png');
+              await tempFile.writeAsBytes(bytes);
+              setState(() {
+                _imageFile = XFile(tempFile.path);
+              });
+            } catch (e) {
+              devtools.log('Error decoding image: $e');
+            }
           }
+        } else {
+          await _fetchPersonDetails(accountID);
         }
       } else {
-        // If no CV profile data, fetch from Person table
-        await _fetchPersonDetails(accountID);
+        devtools.log('Failed to load profile data: ${response.statusCode}');
       }
-    } else {
-      devtools.log('Failed to load profile data: ${response.statusCode}');
-    }
-  } catch (e) {
-    devtools.log('Error fetching profile data: $e');
-  }
-}
-
-Future<void> _fetchPersonDetails(int accountID) async {
-  try {
-    final response = await http.get(
-      Uri.parse('http://10.0.2.2:3000/api/getPersonDetails?accountID=$accountID'),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data != null) {
+    } catch (e) {
+      devtools.log('Error fetching profile data: $e');
+    } finally {
+      if (mounted) {
+        // Check if the widget is still mounted
         setState(() {
-          _nameController.text = data['FullName'] ?? '';
-          _emailController.text = data['Email'] ?? '';
-          _phoneController.text = data['Mobile_Number'] ?? '';
-          // You may want to leave age, address, and description empty or set defaults
+          _isLoading = false; // Stop loading when data is fetched
         });
-      } else {
-        devtools.log('Person details not found');
       }
-    } else {
-      devtools.log('Failed to load person details: ${response.statusCode}');
     }
-  } catch (e) {
-    devtools.log('Error fetching person details: $e');
   }
-}
 
+  Future<void> _fetchPersonDetails(int accountID) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://192.168.1.9:3000/api/getPersonDetails?accountID=$accountID'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data != null) {
+          setState(() {
+            _nameController.text = data['FullName'] ?? '';
+            _emailController.text = data['Email'] ?? '';
+            _phoneController.text = data['Mobile_Number'] ?? '';
+            // You may want to leave age, address, and description empty or set defaults
+          });
+        } else {
+          devtools.log('Person details not found');
+        }
+      } else {
+        devtools.log('Failed to load person details: ${response.statusCode}');
+      }
+    } catch (e) {
+      devtools.log('Error fetching person details: $e');
+    }
+  }
 
   Future<void> _pickImage() async {
     if (_isEditing) {
@@ -188,43 +203,143 @@ Future<void> _fetchPersonDetails(int accountID) async {
 
     Uint8List? imageBytes;
     if (_imageFile != null) {
-      imageBytes = await _imageFile!.readAsBytes();
+      // Read the image file
+      final File imageFile = File(_imageFile!.path);
+
+      // Load the image into memory using the image package
+      final img.Image? originalImage =
+          img.decodeImage(imageFile.readAsBytesSync());
+
+      if (originalImage != null) {
+        // Get the size of the original image in bytes
+        int originalSizeBytes = imageFile.lengthSync();
+
+        // If the image is already under 2MB, skip compression
+        if (originalSizeBytes <= 2 * 1024 * 1024) {
+          devtools
+              .log('Image size is already under 2MB: $originalSizeBytes bytes');
+          imageBytes = await imageFile.readAsBytes(); // No need to compress
+        } else {
+          // Compress the image to approximately 2MB by reducing quality and dimensions
+          const int targetSizeMB = 2; // Target size in MB
+          const int targetSizeBytes =
+              targetSizeMB * 1024 * 1024; // Convert MB to bytes
+
+          // Estimate resize factor based on the original size
+          double resizeFactor = sqrt(targetSizeBytes / originalSizeBytes);
+
+          // Resize the image based on the estimated factor
+          img.Image resizedImage = img.copyResize(
+            originalImage,
+            width: (originalImage.width * resizeFactor).toInt(),
+          );
+
+          // Start with a slightly reduced quality (80%)
+          int quality = 80;
+          List<int>? compressedImageBytes;
+
+          // Compress the resized image
+          compressedImageBytes = img.encodeJpg(resizedImage, quality: quality);
+          devtools.log(
+              'Initial compressed image size: ${compressedImageBytes!.length} bytes');
+
+          // If the initial compression is still larger than 2MB, reduce quality
+          if (compressedImageBytes.length > targetSizeBytes) {
+            // Reduce quality in larger steps initially, then smaller steps near the target size
+            for (int step = 20; step >= 5; step = step ~/ 2) {
+              while (compressedImageBytes != null &&
+                  compressedImageBytes.length > targetSizeBytes &&
+                  quality > 0) {
+                quality -= step;
+                compressedImageBytes =
+                    img.encodeJpg(resizedImage, quality: quality);
+                devtools.log(
+                    'Compressed image size with quality $quality: ${compressedImageBytes.length} bytes');
+              }
+            }
+          }
+          // Convert the compressed image to Uint8List
+          if (compressedImageBytes != null) {
+            devtools.log(compressedImageBytes.length.toString());
+            imageBytes = Uint8List.fromList(compressedImageBytes);
+          }
+        }
+      }
     }
 
     final profileData = {
       'accountID': accountID,
-      'photo': imageBytes != null ? base64Encode(imageBytes) : null,
+      'Photo': imageBytes != null ? base64Encode(imageBytes) : null,
       'name': _nameController.text.trim().toUpperCase(),
       'age': _ageController.text.trim().toUpperCase(),
-      'email_address': _emailController.text.trim().toUpperCase(),
+      'email_address': _emailController.text.trim(),
       'mobile_number': _phoneController.text.trim().toUpperCase(),
       'address': _addressController.text.trim().toUpperCase(),
       'description': _descriptionController.text.trim().toUpperCase(),
     };
 
     devtools.log('Saving profile data for accountID: $accountID');
-    devtools.log('Profile data: $profileData');
+
+    setState(() {
+      _isSaving = true;
+    });
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/saveCVProfile'),
+        Uri.parse('http://192.168.1.9:3000/api/saveCVProfile'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(profileData),
+      );
+      final response2 = await http.post(
+        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
         body: jsonEncode(profileData),
       );
 
-      devtools.log('Response status: ${response.statusCode}');
-      devtools.log('Response body: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      devtools.log('Response 1 status: ${response.statusCode}');
+      devtools.log('Response 1 body: ${response.body}');
+      devtools.log('Response 2 status: ${response2.statusCode}');
+      devtools.log('Response 2 body: ${response2.body}');
+      if (response.statusCode == 200 || response2.statusCode == 200) {
         devtools.log('Profile saved successfully');
+        _showSuccessDialog();
       } else {
         devtools.log('Failed to save profile: ${response.statusCode}');
+        _showErrorDialog('Failed to save profile.');
       }
     } catch (e) {
       devtools.log('Error saving profile data: $e');
+      _showErrorDialog('An error occurred while saving the profile.');
+    } finally {
+      if (mounted) {
+        // Check if the widget is still mounted
+        setState(() {
+          _isSaving = false; // Stop saving when done
+        });
+      }
     }
+  }
+
+  String? _validatePhoneNumber(String phoneNumber) {
+    if (phoneNumber.isEmpty) {
+      return 'Mobile Phone cannot be empty';
+    } else if (!RegExp(r'^01\d{8}$').hasMatch(phoneNumber)) {
+      return 'Invalid Phone Number.';
+    }
+    return null;
+  }
+
+  String? _validateEmail(String email) {
+    if (email.isEmpty) {
+      return 'Email cannot be empty';
+    } else if (!email.contains('@')) {
+      return 'Invalid Email';
+    }
+    return null;
   }
 
   void _validateFields() {
@@ -233,10 +348,8 @@ Future<void> _fetchPersonDetails(int accountID) async {
           _nameController.text.isEmpty ? 'Name cannot be empty.' : null;
       _errorMessages['age'] =
           _ageController.text.isEmpty ? 'Age cannot be empty.' : null;
-      _errorMessages['email'] =
-          _emailController.text.isEmpty ? 'Email cannot be empty.' : null;
-      _errorMessages['phone'] =
-          _phoneController.text.isEmpty ? 'Phone cannot be empty.' : null;
+      _errorMessages['email'] = _validateEmail(_emailController.text);
+      _errorMessages['phone'] = _validatePhoneNumber(_phoneController.text);
       _errorMessages['address'] =
           _addressController.text.isEmpty ? 'Address cannot be empty.' : null;
       _errorMessages['description'] = _descriptionController.text.isEmpty
@@ -270,66 +383,28 @@ Future<void> _fetchPersonDetails(int accountID) async {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        title:
-            Text('Profile Information', style: AppWidget.headlineTextFieldStyle()),
+        title: Text('Profile Information',
+            style: AppWidget.headlineTextFieldStyle()),
       ),
-      body: Container(
-        color: Colors.white,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(15.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20.0),
-              InkWell(
-                onTap: _isEditing ? _pickImage : null,
-                child: Material(
-                  elevation: 4.0,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black, width: 1.5),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: _imageFile == null
-                        ? const Icon(Icons.camera_alt_outlined,
-                            color: Colors.black)
-                        : CircleAvatar(
-                            radius: 80.0,
-                            backgroundImage:
-                                FileImage(File(_imageFile!.path)),
-                          ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15.0),
-              _buildInputField("Name", _nameController, _errorMessages['name']),
-              const SizedBox(height: 15.0),
-              _buildInputField("Age", _ageController, _errorMessages['age']),
-              const SizedBox(height: 15.0),
-              _buildInputField("Email", _emailController, _errorMessages['email']),
-              const SizedBox(height: 15.0),
-              _buildInputField("Phone", _phoneController, _errorMessages['phone']),
-              const SizedBox(height: 15.0),
-              _buildInputField("Address", _addressController,
-                  _errorMessages['address']),
-              const SizedBox(height: 15.0),
-              _buildInputField("Description", _descriptionController,
-                  _errorMessages['description']),
-              const SizedBox(height: 15.0),
-            ],
-          ),
-        ),
-      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator()) // Show loading spinner
+          : Stack(
+              children: [
+                _buildProfileForm(), // Show the form after data is fetched
+                if (_isSaving)
+                  const Center(
+                      child:
+                          CircularProgressIndicator()), // Loading during save
+              ],
+            ),
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             ElevatedButton(
-              onPressed: _toggleEditMode,
+              onPressed: (_isLoading || _isSaving) ? null : _toggleEditMode,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF171B63),
                 padding: const EdgeInsets.symmetric(
@@ -349,6 +424,90 @@ Future<void> _fetchPersonDetails(int accountID) async {
     );
   }
 
+  Widget _buildProfileForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(15.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 20.0),
+          InkWell(
+            onTap: _isEditing ? _pickImage : null,
+            child: Material(
+              elevation: 4.0,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black, width: 1.5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: _imageFile == null
+                    ? const Icon(Icons.camera_alt_outlined, color: Colors.black)
+                    : CircleAvatar(
+                        radius: 80.0,
+                        backgroundImage: FileImage(File(_imageFile!.path)),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 15.0),
+          _buildInputField("Name", _nameController, _errorMessages['name']),
+          const SizedBox(height: 15.0),
+          _buildInputField("Age", _ageController, _errorMessages['age']),
+          const SizedBox(height: 15.0),
+          _buildInputField("Email", _emailController, _errorMessages['email']),
+          const SizedBox(height: 15.0),
+          _buildInputField("Phone", _phoneController, _errorMessages['phone']),
+          const SizedBox(height: 15.0),
+          _buildInputField(
+              "Address", _addressController, _errorMessages['address']),
+          const SizedBox(height: 15.0),
+          _buildInputField("Description", _descriptionController,
+              _errorMessages['description']),
+          const SizedBox(height: 15.0),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Success'),
+          content: const Text('Profile saved successfully.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildInputField(
       String label, TextEditingController controller, String? errorMessage) {
     return Column(
@@ -362,6 +521,9 @@ Future<void> _fetchPersonDetails(int accountID) async {
           style:
               const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
           decoration: InputDecoration(
+            hintText: label == "Phone"
+                ? 'Mobile Phone (Eg: 01xxxxxxxx)'
+                : null, // Hint text for phone
             border:
                 OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
             contentPadding:

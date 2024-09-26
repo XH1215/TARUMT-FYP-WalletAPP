@@ -1,16 +1,9 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as devtools show log;
-import 'package:path_provider/path_provider.dart';
-
-void main() {
-  runApp(const MaterialApp(home: ViewProfile()));
-}
 
 class AppWidget {
   static TextStyle headlineTextFieldStyle() {
@@ -47,8 +40,6 @@ class ViewProfile extends StatefulWidget {
 
 class _ViewProfileState extends State<ViewProfile> {
   bool _isEditing = false;
-  XFile? _imageFile;
-  final ImagePicker _picker = ImagePicker();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _mobilePhoneController = TextEditingController();
@@ -88,7 +79,7 @@ class _ViewProfileState extends State<ViewProfile> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/getProfile?accountID=$accountID'),
+        Uri.parse('http://192.168.1.9:3000/api/getProfile?accountID=$accountID'),
       );
 
       devtools.log('Response status: ${response.statusCode}');
@@ -96,21 +87,6 @@ class _ViewProfileState extends State<ViewProfile> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        // Handle the profile image if available
-        if (data['Photo'] != null && data['Photo'].isNotEmpty) {
-          try {
-            final bytes = base64Decode(data['Photo']);
-            final tempFile = File(
-                '${(await getTemporaryDirectory()).path}/profile_image.png');
-            await tempFile.writeAsBytes(bytes);
-            setState(() {
-              _imageFile = XFile(tempFile.path);
-            });
-          } catch (e) {
-            devtools.log('Error decoding image: $e');
-          }
-        }
 
         setState(() {
           _firstNameController.text = data['First_Name'] ?? '';
@@ -135,48 +111,38 @@ class _ViewProfileState extends State<ViewProfile> {
   }
 
   Future<void> _fetchEmailFromAccount(int accountID) async {
-    final accountID = await _getAccountID();
-    if (accountID == null) {
-      devtools.log('No accountID found');
-      return;
-    }
-  devtools.log('Fetching email for accountID: $accountID');
-  try {
-    final response = await http.get(
-      Uri.parse('http://10.0.2.2:3000/api/getAccountEmail?accountID=$accountID'),
-    );
+    devtools.log('Fetching email for accountID: $accountID');
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://192.168.1.9:3000/api/getAccountEmail?accountID=$accountID'),
+      );
 
-    devtools.log('Response status for email: ${response.statusCode}');
-    devtools.log('Response body for email: ${response.body}');
+      devtools.log('Response status for email: ${response.statusCode}');
+      devtools.log('Response body for email: ${response.body}');
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-      if (data != null && data['Email'] != null) {
-        devtools.log('Email fetched successfully: ${data['Email']}');
-        setState(() {
-          _emailController.text = data['Email'] ?? '';
-        });
+        if (data != null && data['Email'] != null) {
+          devtools.log('Email fetched successfully: ${data['Email']}');
+          setState(() {
+            _emailController.text = data['Email'] ?? '';
+          });
+        } else {
+          devtools.log('Email not found in the response');
+        }
       } else {
-        devtools.log('Email not found in the response');
+        devtools.log('Failed to load email data: ${response.statusCode}');
+        devtools.log('Response body: ${response.body}');
       }
-    } else {
-      devtools.log('Failed to load email data: ${response.statusCode}');
-      devtools.log('Response body: ${response.body}');
+    } catch (e) {
+      devtools.log('Error fetching email data: $e');
     }
-  } catch (e) {
-    devtools.log('Error fetching email data: $e');
   }
-}
-
 
   Future<void> _saveProfileData() async {
     final accountID = await _getAccountID() ?? 0;
-
-    Uint8List? imageBytes;
-    if (_imageFile != null) {
-      imageBytes = await File(_imageFile!.path).readAsBytes();
-    }
 
     final profileData = {
       'accountID': accountID,
@@ -185,7 +151,6 @@ class _ViewProfileState extends State<ViewProfile> {
       'mobilePhone': _mobilePhoneController.text.trim(),
       'email': _emailController.text.trim(),
       'icNumber': _icNumberController.text.trim(),
-      'photo': imageBytes != null ? base64Encode(imageBytes) : null,
     };
 
     devtools.log('Saving profile data for accountID: $accountID');
@@ -193,7 +158,7 @@ class _ViewProfileState extends State<ViewProfile> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/saveProfile'),
+        Uri.parse('http://192.168.1.9:3000/api/saveProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -253,7 +218,7 @@ class _ViewProfileState extends State<ViewProfile> {
         title: Padding(
           padding: const EdgeInsets.only(bottom: 10.0),
           child: Text(
-            'Profile',
+            'Account Profile',
             style: AppWidget.headlineTextFieldStyle(),
           ),
         ),
@@ -264,37 +229,13 @@ class _ViewProfileState extends State<ViewProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20.0),
-              InkWell(
-                onTap: _isEditing ? () => _showImagePicker(context) : null,
-                child: Material(
-                  elevation: 4.0,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black, width: 1.5),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: _imageFile == null
-                        ? const Icon(Icons.camera_alt_outlined,
-                            color: Colors.black)
-                        : CircleAvatar(
-                            radius: 80.0,
-                            backgroundImage:
-                                FileImage(File(_imageFile!.path)),
-                          ),
-                  ),
-                ),
-              ),
               const SizedBox(height: 30.0),
-              _buildInputField(context, "First Name", _firstNameController,
-                  _isEditing,
+              _buildInputField(
+                  context, "First Name", _firstNameController, _isEditing,
                   errorText: _firstNameError, isNameField: true),
               const SizedBox(height: 20.0),
-              _buildInputField(context, "Last Name", _lastNameController,
-                  _isEditing,
+              _buildInputField(
+                  context, "Last Name", _lastNameController, _isEditing,
                   errorText: _lastNameError, isNameField: true),
               const SizedBox(height: 20.0),
               _buildICNumberField(context, _icNumberController, _isEditing,
@@ -316,17 +257,8 @@ class _ViewProfileState extends State<ViewProfile> {
                           _lastNameError == null &&
                           _phoneNumberError == null &&
                           _emailError == null &&
-                          _icNumberError == null ) {
-                        // If email is empty, fetch it from the Account table
-                        if (_emailController.text.isEmpty) {
-                          _getAccountID().then((accountID) {
-                            if (accountID != null) {
-                              _fetchEmailFromAccount(accountID);
-                            }
-                          });
-                        } else {
-                          _saveProfileData(); // Save profile data
-                        }
+                          _icNumberError == null) {
+                        _saveProfileData(); // Save profile data
                         _isEditing = false;
                       }
                     } else {
@@ -378,8 +310,8 @@ class _ViewProfileState extends State<ViewProfile> {
                 ? AppWidget.semiBoldTextFieldStyle()
                 : AppWidget.savedTextFieldStyle(),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20.0, vertical: 15.0),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
               border: InputBorder.none,
               hintText: label,
               hintStyle: const TextStyle(
@@ -427,8 +359,8 @@ class _ViewProfileState extends State<ViewProfile> {
                 ? AppWidget.semiBoldTextFieldStyle()
                 : AppWidget.savedTextFieldStyle(),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20.0, vertical: 15.0),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
               border: InputBorder.none,
               hintText: 'IC Number',
               hintStyle: const TextStyle(
@@ -474,8 +406,8 @@ class _ViewProfileState extends State<ViewProfile> {
                 ? AppWidget.semiBoldTextFieldStyle()
                 : AppWidget.savedTextFieldStyle(),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20.0, vertical: 15.0),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
               border: InputBorder.none,
               hintText: 'Mobile Phone (Eg: 01xxxxxxxx)',
               hintStyle: const TextStyle(
@@ -499,48 +431,6 @@ class _ViewProfileState extends State<ViewProfile> {
           ),
         ],
       ],
-    );
-  }
-
-  Future<void> _showImagePicker(BuildContext context) async {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Gallery'),
-                onTap: () async {
-                  final XFile? pickedFile = await _picker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 80,
-                  );
-                  setState(() {
-                    _imageFile = pickedFile;
-                  });
-                  Navigator.of(context).pop();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Camera'),
-                onTap: () async {
-                  final XFile? pickedFile = await _picker.pickImage(
-                    source: ImageSource.camera,
-                    imageQuality: 80,
-                  );
-                  setState(() {
-                    _imageFile = pickedFile;
-                  });
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

@@ -96,7 +96,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/getCVWork?accountID=$accountID'),
+        Uri.parse('http://192.168.1.9:3000/api/getCVWork?accountID=$accountID'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -220,50 +220,53 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     List<Map<String, dynamic>> existingWorkEntries = [];
     List<int> newEntryIndexes = []; // Track indexes of new entries
 
-    Set<String> uniqueEntries =
-        {}; // To store unique job title and company name combinations
+    bool hasError = false; // To track if any validation error exists
+    Set<String> entrySet = {}; // To track unique work experience entries
 
     for (int i = 0; i < _workExperienceEntries.length; i++) {
-      // Skip entries with default/empty values
-      if (_jobTitleControllers[i].text.isEmpty &&
-          _companyNameControllers[i].text.isEmpty &&
-          _selectedIndustries[i] ==
-              'ACCOUNTING' && // Assuming 'ACCOUNTING' is the default
-          _countryControllers[i].text.isEmpty &&
-          _stateControllers[i].text.isEmpty &&
-          _cityControllers[i].text.isEmpty &&
-          _descriptionControllers[i].text.isEmpty &&
-          _startDateControllers[i].text.isEmpty &&
-          _endDateControllers[i].text.isEmpty) {
-        continue;
-      }
-
-      // Convert job title and company name to uppercase for comparison
+      // Convert job title, company name to uppercase for consistency
       String jobTitle = _jobTitleControllers[i].text.trim().toUpperCase();
       String companyName = _companyNameControllers[i].text.trim().toUpperCase();
+      String industry = _selectedIndustries[i] == 'OTHERS'
+          ? _otherIndustryControllers[i].text.trim().toUpperCase()
+          : _selectedIndustries[i]?.toUpperCase() ?? '';
 
-      // Create a unique key by combining job title and company name
-      String entryKey = '$jobTitle-$companyName';
+      // Create a unique key for duplicate checking based on job title and company name
+      String uniqueKey = '$jobTitle-$companyName';
 
-      // Check if the combination already exists
-      if (uniqueEntries.contains(entryKey)) {
-        // Show error message if duplicate is found
-        showErrorDialog(context,
-            'Duplicate entry: Job Title "$jobTitle" at Company "$companyName" already exists.');
-        return;
+      // Check for empty fields and show an error dialog
+      if (jobTitle.isEmpty ||
+          companyName.isEmpty ||
+          industry.isEmpty ||
+          _countryControllers[i].text.isEmpty ||
+          _stateControllers[i].text.isEmpty ||
+          _cityControllers[i].text.isEmpty ||
+          _descriptionControllers[i].text.isEmpty ||
+          _startDateControllers[i].text.isEmpty ||
+          _endDateControllers[i].text.isEmpty) {
+        hasError = true;
+        showErrorDialog(
+            context, 'Please fill in all the fields for entry ${i + 1}.');
+        break; // Stop further execution if there's an error
       }
 
-      // Add the entry key to the set
-      uniqueEntries.add(entryKey);
+      // Check for duplicate job title and company name
+      if (entrySet.contains(uniqueKey)) {
+        hasError = true;
+        showErrorDialog(context,
+            'Duplicate entry for work entry ${i + 1}. Please modify or remove it.');
+        break; // Stop further execution if there's a duplicate
+      }
 
-      // Create the work entry
+      // Add the unique key to the set to track this entry
+      entrySet.add(uniqueKey);
+
+      // Prepare the work entry for saving
       final entry = {
         'workExpID': _workExperienceEntries[i]['workExpID'],
         'job_title': jobTitle,
         'company_name': companyName,
-        'industry': _selectedIndustries[i] == 'OTHERS'
-            ? _otherIndustryControllers[i].text.toUpperCase()
-            : _selectedIndustries[i]?.toUpperCase(),
+        'industry': industry,
         'country': _countryControllers[i].text.trim().toUpperCase(),
         'state': _stateControllers[i].text.trim().toUpperCase(),
         'city': _cityControllers[i].text.trim().toUpperCase(),
@@ -281,6 +284,11 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       }
     }
 
+    // Exit early if there was a validation error
+    if (hasError) {
+      return;
+    }
+
     final body = jsonEncode({
       'accountID': accountID,
       'newWorkEntries': newWorkEntries,
@@ -289,12 +297,12 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/saveCVWork'),
+        Uri.parse('http://192.168.1.9:3000/api/saveCVWork'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
       final response2 = await http.post(
-        Uri.parse('http://10.0.2.2:3001/api/saino/saveCVWork'),
+        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVWork'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -311,6 +319,9 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         }
 
         devtools.log('Work entries saved successfully.');
+        setState(() {
+          _isEditing = false; // Only turn off editing mode if successful
+        });
       } else {
         devtools.log(
             'Failed to save work entries. Status code: ${response.statusCode}');
@@ -324,11 +335,12 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
   void _toggleEditMode() async {
     if (_isEditing) {
-      await _saveWorkEntries();
+      await _saveWorkEntries(); // Save entries first
+    } else {
+      setState(() {
+        _isEditing = true; // Turn on editing mode when "Edit" is clicked
+      });
     }
-    setState(() {
-      _isEditing = !_isEditing;
-    });
   }
 
   void _addWorkExperienceEntry() {
@@ -367,7 +379,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     if (workExpID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://10.0.2.2:3000/api/deleteCVWork'),
+          Uri.parse('http://192.168.1.9:3000/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'workExpID': workExpID}),
         );
@@ -376,7 +388,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           'company_name': companyName,
         });
         final response2 = await http.post(
-          Uri.parse('http://10.0.2.2:3001/api/saino/deleteCVWork'),
+          Uri.parse('http://192.168.1.9:3001/api/saino/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: body,
         );
@@ -507,6 +519,9 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Widget _buildInputSection(BuildContext context, int index) {
+    // If workExpID is not null, the entry is already stored in the database
+    bool isExistingEntry = _workExperienceEntries[index]['workExpID'] != null;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10.0),
       padding: const EdgeInsets.all(10.0),
@@ -538,11 +553,11 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               ],
             ),
           ),
-          _buildInputField(
-              context, 'Job Title', _jobTitleControllers[index], _isEditing),
+          _buildInputField(context, 'Job Title', _jobTitleControllers[index],
+              _isEditing && !isExistingEntry),
           const SizedBox(height: 15.0),
           _buildInputField(context, 'Company Name',
-              _companyNameControllers[index], _isEditing),
+              _companyNameControllers[index], _isEditing && !isExistingEntry),
           const SizedBox(height: 15.0),
           _buildDropdownField(context, 'Industry', _industries, index,
               editable: _isEditing),
@@ -559,32 +574,44 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           _buildInputField(context, 'Description',
               _descriptionControllers[index], _isEditing),
           const SizedBox(height: 15.0),
+          // Start Date and End Date pickers
           Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Use _buildInputField for Start Date
-          _buildInputField(context, 'Start Date', _startDateControllers[index], _isEditing),
-          const SizedBox(height: 15.0),
-        ],
-      ),
-    ),
-    const SizedBox(width: 15.0),
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Use _buildInputField for End Date
-          _buildInputField(context, 'End Date', _endDateControllers[index], _isEditing),
-          const SizedBox(height: 15.0),
-        ],
-      ),
-    ),
-  ],
-),
-
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _isEditing
+                      ? _selectMonthYear(context, index, true)
+                      : null,
+                  child: AbsorbPointer(
+                    absorbing: !_isEditing,
+                    child: _buildInputField(
+                      context,
+                      'Start Date',
+                      _startDateControllers[index],
+                      false, // Set to false to disable direct text input
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 15.0),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _isEditing
+                      ? _selectMonthYear(context, index, false)
+                      : null,
+                  child: AbsorbPointer(
+                    absorbing: !_isEditing,
+                    child: _buildInputField(
+                      context,
+                      'End Date',
+                      _endDateControllers[index],
+                      false, // Set to false to disable direct text input
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 15.0),
           if (_isEditing)
             Row(
@@ -607,10 +634,14 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
   Future<void> _selectMonthYear(
       BuildContext context, int index, bool isStart) async {
-    // Parse the existing date or default to today
-    DateTime selectedDate = isStart
-        ? DateTime.tryParse(_startDateControllers[index].text) ?? DateTime.now()
-        : DateTime.tryParse(_endDateControllers[index].text) ?? DateTime.now();
+    DateTime selectedDate = DateTime.now();
+    if (isStart) {
+      selectedDate = DateTime.tryParse(_startDateControllers[index].text) ??
+          DateTime.now();
+    } else {
+      selectedDate =
+          DateTime.tryParse(_endDateControllers[index].text) ?? DateTime.now();
+    }
 
     final DateTime? picked = await showMonthYearPicker(
       context: context,
@@ -620,14 +651,13 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     );
 
     if (picked != null) {
-      String formattedDate =
-          '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
       setState(() {
+        String formattedDate =
+            '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
         if (isStart) {
-          _startDateControllers[index].text =
-              formattedDate; // Save as year-month
+          _startDateControllers[index].text = formattedDate;
         } else {
-          _endDateControllers[index].text = formattedDate; // Save as year-month
+          _endDateControllers[index].text = formattedDate;
         }
       });
     }
@@ -700,7 +730,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Widget _buildInputField(BuildContext context, String labelText,
-      TextEditingController controller, bool isEditing) {
+      TextEditingController controller, bool isEditable) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -708,14 +738,21 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         const SizedBox(height: 10.0),
         TextField(
           controller: controller,
-          enabled: isEditing,
+          enabled:
+              isEditable, // This controls whether the field is editable or not
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            fontSize: 16,
+            color: Color(0xFF171B63),
           ),
           decoration: InputDecoration(
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+              borderSide: const BorderSide(
+                color: Colors.grey,
+                width: 2.0,
+              ),
+            ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
           ),
@@ -736,68 +773,76 @@ Future<DateTime?> showMonthYearPicker({
     builder: (BuildContext context) {
       DateTime selectedDate = initialDate;
 
-      return AlertDialog(
-        title: const Text('Select Month and Year'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Month'),
-              trailing: DropdownButton<int>(
-                value: selectedDate.month,
-                items: List.generate(12, (index) {
-                  return DropdownMenuItem(
-                    value: index + 1,
-                    child: Text(
-                      "${index + 1}",
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  );
-                }),
-                onChanged: (value) {
-                  if (value != null) {
-                    selectedDate = DateTime(selectedDate.year, value);
-                  }
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Select Month and Year'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text('Month'),
+                  trailing: DropdownButton<int>(
+                    value: selectedDate.month,
+                    items: List.generate(12, (index) {
+                      return DropdownMenuItem(
+                        value: index + 1,
+                        child: Text(
+                          "${index + 1}",
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedDate = DateTime(selectedDate.year, value);
+                        });
+                      }
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Year'),
+                  trailing: DropdownButton<int>(
+                    value: selectedDate.year,
+                    items: List.generate(lastDate.year - firstDate.year + 1,
+                        (index) {
+                      return DropdownMenuItem(
+                        value: firstDate.year + index,
+                        child: Text(
+                          "${firstDate.year + index}",
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedDate = DateTime(value, selectedDate.month);
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop(selectedDate);
                 },
               ),
-            ),
-            ListTile(
-              title: const Text('Year'),
-              trailing: DropdownButton<int>(
-                value: selectedDate.year,
-                items:
-                    List.generate(lastDate.year - firstDate.year + 1, (index) {
-                  return DropdownMenuItem(
-                    value: firstDate.year + index,
-                    child: Text(
-                      "${firstDate.year + index}",
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  );
-                }),
-                onChanged: (value) {
-                  if (value != null) {
-                    selectedDate = DateTime(value, selectedDate.month);
-                  }
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
                 },
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            child: const Text('OK'),
-            onPressed: () {
-              Navigator.of(context).pop(selectedDate);
-            },
-          ),
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
+            ],
+          );
+        },
       );
     },
   );

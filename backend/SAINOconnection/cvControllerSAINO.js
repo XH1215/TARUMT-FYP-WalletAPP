@@ -121,14 +121,22 @@ module.exports.deleteCVSkill = async (req, res) => {
         res.status(500).send('Server error');
     }
 };
+module.exports.saveCVProfile = async (req, res) => {
+    const { accountID, Photo, name, age, email_address, mobile_number, address, description } = req.body;
 
-module.exports.saveCVProfile = async (accountID, photo, name, age, email_address, mobile_number, address, description) => {
     try {
+        console.log("Start save profile");
+        console.log(Photo);
+        // Fetch the connection pool
         const sainoPool = await sainoPoolPromise;
 
+        // Convert base64 Photo to binary buffer
+        const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
+        console.log(profilePicBuffer);
+        // Execute SQL query
         await sainoPool.request()
             .input('UserID', sql.Int, accountID)
-            .input('Photo', sql.NVarChar, photo)
+            .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
             .input('Name', sql.NVarChar, name)
             .input('Age', sql.NVarChar, age)
             .input('Email_Address', sql.NVarChar, email_address)
@@ -136,24 +144,33 @@ module.exports.saveCVProfile = async (accountID, photo, name, age, email_address
             .input('Address', sql.NVarChar, address)
             .input('Description', sql.NVarChar, description)
             .query(`
-                    IF EXISTS (SELECT 1 FROM Profile WHERE UserID = @UserID)
-                    BEGIN
-                        UPDATE Profile
-                        SET Photo = @Photo, Name = @Name, Age = @Age, Email_Address = @Email_Address, 
-                            Mobile_Number = @Mobile_Number, Address = @Address, Description = @Description
-                        WHERE UserID = @UserID
-                    END
-                    ELSE
-                    BEGIN
-                        INSERT INTO Profile (UserID, Photo, Name, Age, Email_Address, Mobile_Number, Address, Description)
-                        VALUES (@UserID, @Photo, @Name, @Age, @Email_Address, @Mobile_Number, @Address, @Description)
-                    END
-                `);
+                IF EXISTS (SELECT 1 FROM Profile WHERE UserID = @UserID)
+                BEGIN
+                    UPDATE Profile
+                    SET Photo = @Photo, Name = @Name, Age = @Age, Email_Address = @Email_Address, 
+                        Mobile_Number = @Mobile_Number, Address = @Address, Description = @Description
+                    WHERE UserID = @UserID
+                END
+                ELSE
+                BEGIN
+                    INSERT INTO Profile (UserID, Photo, Name, Age, Email_Address, Mobile_Number, Address, Description)
+                    VALUES (@UserID, @Photo, @Name, @Age, @Email_Address, @Mobile_Number, @Address, @Description)
+                END
+            `);
+
+        console.log("Save profile success");
+
+        // Return success response
+        return res.status(200).send('Profile saved successfully to SAINO.');
+        
     } catch (error) {
         console.error('Error saving profile to SAINO:', error);
-        throw new Error('Failed to save profile to SAINO.');
+
+        // Return error response
+        return res.status(500).send('Failed to save profile to SAINO.');
     }
 };
+
 
 module.exports.deleteCVWork = async (req, res) => {
     const { job_title, company_name } = req.body;
@@ -531,7 +548,7 @@ module.exports.saveCVEducation = async (req, res) => {
                 }
             }
         }
-
+        console.log("save education successful");
         // Sending success response after all operations are complete
         res.status(200).send('Education entries processed successfully');
 

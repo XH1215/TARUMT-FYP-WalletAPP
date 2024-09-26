@@ -9,7 +9,7 @@ const { createWalletandDID } = require('../controllers/acapyRegister');
 const { receiveConnection } = require('../controllers/receiveConnection');
 const { receiveOffer } = require('../controllers/receiveOffer');
 const { getAuthToken, storeCredential, getWalletData } = require('../controllers/storeCredential');
-
+const {receiveExistedCredential} = require('../controllers/receiveExistedCredential');
 
 
 
@@ -19,8 +19,6 @@ const { generateQRCode, fetchQRCodesByUserId, deleteQRCode,fetchCVByQRCode } = r
 
 
 const {
-    getCertificationTypes,
-    getCertificationDetails,
     saveCVProfile,
     getCVProfile,
     saveCVEducation,
@@ -29,8 +27,6 @@ const {
     getCVWork,
     saveCVQuali,
     getCVQualiInfo,
-    updateHasCV,
-    checkCV,
     saveProfile,
     getProfile,
     getAccountEmail,
@@ -58,6 +54,7 @@ router.post('/receiveOffer', receiveOffer);
 router.post('/getAuthToken', getAuthToken);
 router.post('/storeCredential', storeCredential);
 router.post('/getWalletData', getWalletData);
+router.post('/receiveExistedCredential', receiveExistedCredential);
 
 
 // Add this route for checking credentials
@@ -101,13 +98,8 @@ router.post('/updateCertificationStatus', updateCertificationStatus);
 
 
 
-
-router.get('/getCertificationTypes', getCertificationTypes);
-router.get('/getCertificationDetails', getCertificationDetails);
 router.post('/saveCVQuali', saveCVQuali);
 router.get('/getCVQualiInfo', getCVQualiInfo);
-router.post('/updateHasCV', updateHasCV);
-router.get('/checkCV', checkCV);
 
 router.post('/showDetails', showDetails);
 

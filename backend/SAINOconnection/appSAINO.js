@@ -7,7 +7,9 @@ const appSAINO = express();
 
 // Middleware
 appSAINO.use(cors()); // Enable CORS
-appSAINO.use(bodyParser.json()); // Parse JSON request bodies
+
+appSAINO.use(bodyParser.json({ limit: '10mb' })); // Adjust the limit based on your needs
+appSAINO.use(bodyParser.urlencoded({ limit: '10mb', extended: true })); // For URL-encoded form data
 
 // Route handling
 appSAINO.use('/api/saino', sainoRoutes); // SAINO API route

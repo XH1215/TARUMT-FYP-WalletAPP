@@ -39,7 +39,7 @@ Future<void> _checkForNewCredentials() async {
         return;
     }
 
-    final response = await http.get(Uri.parse('http://10.0.2.2:3000/api/receiveCredentials/$email'));
+    final response = await http.get(Uri.parse('http://192.168.1.9:3000/api/receiveCredentials/$email'));
 
     if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);

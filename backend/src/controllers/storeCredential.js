@@ -14,54 +14,73 @@ let poolPromise = sql.connect(dbConfig)
         process.exit(1);
     });
 
-// Function to store the credential
-async function storeCredential(credExId, jwtToken) {
+// Helper function to wait for a specified number of milliseconds
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Function to store the credential (modified to take data from req.body)
+const storeCredential = async (req, res) => {
+    const { credExId, jwtToken } = req.body; // Extract credExId and jwtToken from request body
+
+    // Check if both credExId and jwtToken are provided
+    if (!credExId || !jwtToken) {
+        return res.status(400).json({ error: "credExId and jwtToken are required" });
+    }
+
     try {
-        // Step 1: Accept the offer
-        const acceptResponse = await axios.post(
-            `http://localhost:7011/issue-credential-2.0/records/${credExId}/send-request`,
-            {},
-            {
-                headers: {
-                    Authorization: `Bearer ${jwtToken}`,  // Pass your JWT token for holder
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-        console.log("Accept:    \n\n" + acceptResponse.data);
+        console.log("Step 1: Received credExId and jwtToken from request body");
+        console.log("credExId: ", credExId);
+        console.log("\n\n\njwtToken:\n", jwtToken + "\n\n\n\n\n");
 
+        // // Step 1: Accept the offer
+        // const acceptResponse = await axios.post(
+        //     `http://localhost:7011/issue-credential-2.0/records/${credExId}/send-request`,
+        //     {},
+        //     {
+        //         headers: {
+        //             Authorization: `Bearer ${jwtToken}`,  // Use the JWT token from the request body
+        //             'Content-Type': 'application/json'
+        //         }
+        //     }
+        // );
+
+        // console.log("Offer accepted: ", acceptResponse.data);
+
+        // Step 2: Store the credential after a short delay
         const requestUrl = `http://localhost:7011/issue-credential-2.0/records/${credExId}/store`;
-        console.log(requestUrl);
+        console.log("Storing credential at: ", requestUrl);
 
-        // Wait for 5 seconds
-        await wait(5000);
+        // Wait for 2 seconds (if needed)
+        await wait(2000);
 
-        // Step 2: Store the credential
         const storeResponse = await axios.post(
             requestUrl,
             {},
             {
                 headers: {
-                    Authorization: `Bearer ${jwtToken}`,  // Use the retrieved JWT token
+                    Authorization: `Bearer ${jwtToken}`,  // Use the JWT token from the request body
                     'Content-Type': 'application/json'
                 }
             }
         );
-        console.log("Store Done");
-        return storeResponse.data; // Return the store response if needed
+
+        console.log("Credential stored successfully: ", storeResponse.data);
+
+        // Send success response back to the client
+        return res.status(200).json({
+            message: "Credential stored successfully",
+            data: storeResponse.data
+        });
+
     } catch (error) {
         console.error('Error storing credential:', error.message);
-        throw new Error('Failed to store credential');
+        return res.status(500).json({ error: 'Failed to store credential' });
     }
-}
-
-// Function to wait for a specified number of milliseconds
-function wait(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+};
 
 // Function to get Auth Token from ACA-Py
-async function getAuthToken(req, res) {
+const getAuthToken = async (req, res) => {
     const { walletID } = req.body; // Expect walletID in request body
 
     if (!walletID) {
@@ -80,10 +99,10 @@ async function getAuthToken(req, res) {
         console.error('Error getting auth token:', error.response ? error.response.data : error.message);
         res.status(500).send('Failed to get auth token');
     }
-}
+};
 
 // Function to get Wallet Data from MSSQL database
-async function getWalletData(req, res) {
+const getWalletData = async (req, res) => {
     const { email } = req.body; // Expect email in request body
 
     if (!email) {
@@ -110,11 +129,11 @@ async function getWalletData(req, res) {
         console.error('Get Wallet Data Error:', err);
         res.status(500).send('Server error');
     }
-}
+};
 
-// Export all the functions
+// Export all the functions as proper POST methods
 module.exports = {
     storeCredential,
     getAuthToken,
-    getWalletData,
+    getWalletData
 };

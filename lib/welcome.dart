@@ -15,7 +15,7 @@ class WelcomePage extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(
-              height: 100,
+              height: 130,
             ),
             const Text(
               'Welcome',
@@ -26,7 +26,7 @@ class WelcomePage extends StatelessWidget {
               ),
             ),
             const SizedBox(
-              height: 80,
+              height: 100,
             ),
             GestureDetector(
               onTap: () {
@@ -36,7 +36,7 @@ class WelcomePage extends StatelessWidget {
                 );
               },
               child: Container(
-                height: 53,
+                height: 60,
                 width: 320,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
@@ -55,7 +55,7 @@ class WelcomePage extends StatelessWidget {
               ),
             ),
             const SizedBox(
-              height: 30,
+              height: 50,
             ),
             GestureDetector(
               onTap: () {
@@ -65,7 +65,7 @@ class WelcomePage extends StatelessWidget {
                 );
               },
               child: Container(
-                height: 53,
+                height: 60,
                 width: 320,
                 decoration: BoxDecoration(
                   color: const Color(0xFF171B63),

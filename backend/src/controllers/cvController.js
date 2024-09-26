@@ -13,52 +13,6 @@ let poolPromise = new sql.connect(dbConfigWallet)
         process.exit(1);
     });
 
-// Update CV Status
-module.exports.updateHasCV = async (req, res) => {
-    const { accountID } = req.body;
-
-    try {
-        const result = await sql.query`
-            UPDATE Account
-            SET hasCV = 1, UpdatedAt = GETDATE()
-            WHERE AccountID = ${accountID}`;
-
-        if (result.rowsAffected[0] > 0) {
-            res.status(200).send("hasCV updated successfully.");
-        } else {
-            res.status(404).send("Account not found.");
-        }
-    } catch (error) {
-        console.error("Error updating hasCV:", error);
-        res.status(500).send("An error occurred while updating hasCV.");
-    }
-};
-
-// Check if CV exists
-module.exports.checkCV = async (req, res) => {
-    const accountID = req.query.accountID;
-    if (!accountID) {
-        return res.status(400).send('Account ID is required');
-    }
-
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('accountID', sql.Int, accountID)
-            .query('SELECT hasCV FROM Account WHERE AccountID = @accountID');
-
-        if (result.recordset.length > 0) {
-            const { hasCV } = result.recordset[0];
-            res.json({ hasCV });
-        } else {
-            res.status(404).send('Account not found');
-        }
-    } catch (err) {
-        console.error('Error checking CV status:', err.message);
-        res.status(500).send('Server error: ' + err.message);
-    }
-};
-
 
 // ACCOUNT MANAGEMENT
 module.exports.saveProfile = async (req, res) => {
@@ -68,6 +22,8 @@ module.exports.saveProfile = async (req, res) => {
     }
     try {
         const pool = await poolPromise;
+        const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
+
         // Check if the profile already exists
         const checkQuery = `
             SELECT COUNT(*) AS count FROM Person WHERE AccountID = @accountID`;
@@ -112,9 +68,9 @@ module.exports.saveProfile = async (req, res) => {
             .input('email', sql.NVarChar, email)
             .input('icNumber', sql.NVarChar, icNumber);
         if (binaryPhoto) {
-            request.input('Photo', sql.VarBinary, binaryPhoto);
+            request.input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer);
         } else {
-            request.input('Photo', sql.VarBinary, null);  // Set photo as null if not provided
+            request.input('Photo', sql.VarBinary(sql.MAX), null);  // Set Photo as null if not provided
         }
 
         // Execute the query
@@ -140,7 +96,7 @@ module.exports.getProfile = async (req, res) => {
             .query('SELECT First_Name, Last_Name, Mobile_Number, Email_Address, Identity_Code, Photo FROM Person WHERE AccountID = @accountID');
         if (result.recordset.length > 0) {
             const profile = result.recordset[0];
-            // Convert photo binary data to base64 string
+            // Convert Photo binary data to base64 string
             if (profile.Photo) {
                 profile.Photo = Buffer.from(profile.Photo).toString('base64');
             }
@@ -185,14 +141,16 @@ module.exports.getAccountEmail = async (req, res) => {
 // Save CV Profile
 module.exports.saveCVProfile = async (req, res) => {
     const {
-        accountID, photo, name, age, email_address, mobile_number, address, description
+        accountID, Photo, name, age, email_address, mobile_number, address, description
     } = req.body;
-
+    console.log(Photo);
+    console.log("Try to save Photo");
     try {
         // Fetch the connection pool
         const pool = await poolPromise;
-
+        const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
         // Check if profile exists in the Profile table
+        console.log(profilePicBuffer);
         const existingProfile = await pool.request()
             .input('AccountID', sql.Int, accountID)
             .query('SELECT COUNT(*) AS count FROM Profile WHERE AccountID = @AccountID');
@@ -201,7 +159,7 @@ module.exports.saveCVProfile = async (req, res) => {
         if (existingProfile.recordset[0].count > 0) {
             await pool.request()
                 .input('AccountID', sql.Int, accountID)
-                .input('Photo', sql.NVarChar, photo)
+                .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
                 .input('Name', sql.NVarChar, name)
                 .input('Age', sql.NVarChar, age)
                 .input('Email_Address', sql.NVarChar, email_address)
@@ -217,7 +175,7 @@ module.exports.saveCVProfile = async (req, res) => {
         } else {
             await pool.request()
                 .input('AccountID', sql.Int, accountID)
-                .input('Photo', sql.NVarChar, photo)
+                .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
                 .input('Name', sql.NVarChar, name)
                 .input('Age', sql.Int, age)
                 .input('Email_Address', sql.NVarChar, email_address)
@@ -232,6 +190,7 @@ module.exports.saveCVProfile = async (req, res) => {
                     )
                 `);
         }
+        console.log("Try to save Photo successful");
 
 
         res.status(200).send('Profile saved successfully');
@@ -254,17 +213,28 @@ module.exports.getCVProfile = async (req, res) => {
                     Address AS address, Description AS description, Photo AS profile_image_path 
                 FROM Profile 
                 WHERE AccountID = @accountID`);
-        console.log('Query Result:', result.recordset);
+        
+        // Check if any profile data was found
         if (result.recordset.length === 0) {
-            res.status(404).send('No profile data found');
-        } else {
-            res.json(result.recordset);
+            return res.status(404).send('No profile data found');
         }
+
+        const profile = result.recordset[0];
+
+        // Check if profile_image_path exists and convert it to base64 if it does
+        if (profile.profile_image_path) {
+            profile.Photo = Buffer.from(profile.profile_image_path).toString('base64');
+        } else {
+            profile.Photo = null; // Set to null if no photo is available
+        }
+
+        return res.status(200).send(profile);
     } catch (err) {
         console.error('Server error:', err);
-        res.status(500).send('Server error');
+        return res.status(500).send('Server error');
     }
 };
+
 
 // Get Default Person Info : Name, Email, Phone
 module.exports.getPersonDetails = async (req, res) => {
@@ -816,87 +786,6 @@ module.exports.updateCertificationStatus = async (req, res) => {
 
 
 
-
-
-
-
-// Fetch all certification types for a specific accountID
-module.exports.getCertificationTypes = async (req, res) => {
-    const accountID = req.query.accountID;
-    if (!accountID) {
-        return res.status(400).send('Account ID is required');
-    }
-
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('accountID', sql.Int, accountID)
-            .query(`
-                SELECT CerID, CerType
-                FROM Certification
-                WHERE AccountID = @accountID
-            `);
-
-        res.json({ certifications: result.recordset });
-    } catch (error) {
-        console.error('Error fetching certifications:', error);
-        res.status(500).send('Internal Server Error');
-    }
-};
-
-
-
-// Get Certification Types
-module.exports.getCertificationTypes = async (req, res) => {
-    const accountID = req.query.accountID;
-    if (!accountID) {
-        return res.status(400).send('Account ID is required');
-    }
-
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('accountID', sql.Int, accountID)
-            .query(`
-                SELECT CerID, CerType
-                FROM Certification
-                WHERE AccountID = @accountID
-            `);
-
-        res.json({ certifications: result.recordset });
-    } catch (error) {
-        console.error('Error fetching certifications:', error);
-        res.status(500).send('Internal Server Error');
-    }
-};
-
-// Get Certification Details by CerID
-module.exports.getCertificationDetails = async (req, res) => {
-    const cerID = req.query.cerID;
-    if (!cerID) {
-        return res.status(400).send('CerID is required');
-    }
-
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('cerID', sql.Int, cerID)
-            .query(`
-                SELECT CerName, CerEmail, CerIssuer, CerDescription, CerAcquiredDate
-                FROM Certification
-                WHERE CerID = @cerID
-            `);
-
-        res.json(result.recordset[0]); // Assuming only one record
-    } catch (error) {
-        console.error('Error fetching certification details:', error);
-        res.status(500).send('Internal Server Error');
-    }
-};
-
-
-
-
 // Save CV Qualification Info
 module.exports.saveCVQuali = async (req, res) => {
     const { accountID, qualifications } = req.body;
@@ -1021,7 +910,7 @@ module.exports.showDetails = async (req, res) => {
 
         const userDetails = profileResult.recordset[0];
 
-        // If the user has a photo, encode it in base64
+        // If the user has a Photo, encode it in base64
         if (userDetails.profile_image_path) {
             userDetails.profile_image_path = Buffer.from(userDetails.profile_image_path).toString('base64');
         }
@@ -1040,7 +929,7 @@ module.exports.showDetails = async (req, res) => {
                 CONVERT(VARCHAR(10), EduEndDate, 120) AS end_date, 
                 IsPublic AS isPublic
             FROM Education 
-            WHERE AccountID = @accountID AND IsPublic = 1
+            WHERE AccountID = @accountID
         `;
         const educationResult = await pool.request()
             .input('accountID', sql.Int, accountID)
@@ -1060,7 +949,7 @@ module.exports.showDetails = async (req, res) => {
                 CONVERT(VARCHAR(10), WorkStartDate, 120) AS start_date, 
                 CONVERT(VARCHAR(10), WorkEndDate, 120) AS end_date
             FROM Work
-            WHERE AccountID = @accountID AND IsPublic = 1
+            WHERE AccountID = @accountID 
         `;
         const workExperienceResult = await pool.request()
             .input('accountID', sql.Int, accountID)
@@ -1074,7 +963,7 @@ module.exports.showDetails = async (req, res) => {
                 SoftDescription AS description,
                 IsPublic AS isPublic
             FROM SoftSkill
-            WHERE AccountID = @accountID AND IsPublic = 1
+            WHERE AccountID = @accountID
         `;
         const skillsResult = await pool.request()
             .input('accountID', sql.Int, accountID)
@@ -1092,7 +981,7 @@ module.exports.showDetails = async (req, res) => {
         CONVERT(VARCHAR(10), CerAcquiredDate, 120) AS acquiredDate,
         IsPublic AS isPublic
     FROM Certification 
-    WHERE AccountID = @accountID AND IsPublic = 1
+    WHERE AccountID = @accountID 
 `;
 
         const certificationResult = await pool.request()

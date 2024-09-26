@@ -35,7 +35,7 @@ class _ViewCVState extends State<ViewCV> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/showDetails'),
+        Uri.parse('http://192.168.1.9:3000/api/showDetails'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(
             {'accountID': accountID}), // Send accountID to the backend

@@ -30,19 +30,18 @@ class _ViewStoredCredentialScreenState
 
     if (user != null) {
       try {
-        devtools.log("here is view Stored Credential.dart");
+        devtools.log("Fetching stored credentials... " + user.email);
         final response = await http.post(
-          Uri.parse('http://10.0.2.2:3000/api/receiveOffer'),
+          Uri.parse('http://192.168.1.9:3000/api/receiveExistedCredential'),
           headers: {
             'Content-Type': 'application/json',
           },
-          body: json.encode({'holderEmail': user.email}),
+          body: json.encode({'holder': user.email}),
         );
 
         if (response.statusCode == 200) {
-          devtools.log("200 done");
+          devtools.log("Successfully fetched stored credentials.");
           final data = json.decode(response.body);
-          devtools.log("data is: $data");
           setState(() {
             storedCredentials = data['credentials'] ?? [];
             isLoading = false;
@@ -78,12 +77,15 @@ class _ViewStoredCredentialScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         centerTitle: true,
-        backgroundColor: const Color(0xFF171B63),
+        backgroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           'View Stored Credentials',
-          style: TextStyle(color: Colors.white),
         ),
       ),
       body: Center(

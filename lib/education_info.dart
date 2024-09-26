@@ -31,6 +31,7 @@ class EducationInfoPage extends StatefulWidget {
 }
 
 class _EducationInfoPageState extends State<EducationInfoPage> {
+  bool _isDisposed = false;
   final List<String> _educationLevels = [
     'HIGH SCHOOL',
     'FOUNDATION',
@@ -49,8 +50,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   List<TextEditingController> _instituteCountryControllers = [];
   List<TextEditingController> _instituteStateControllers = [];
   List<TextEditingController> _instituteCityControllers = [];
-  List<TextEditingController> _startDateControllers = [];
-  List<TextEditingController> _endDateControllers = [];
+  List<String> _startDateList = [];
+  List<String> _endDateList = [];
   List<bool> _isPublicList = [];
   bool _isEditing = false;
 
@@ -70,10 +71,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _instituteCountryControllers.clear();
       _instituteStateControllers.clear();
       _instituteCityControllers.clear();
-      _startDateControllers.clear();
-      _endDateControllers.clear();
+      _startDateList.clear();
+      _endDateList.clear();
       _isPublicList.clear();
-      _addEducationEntry();
+
+      // Initialize with only one education entry
+      _addEducationEntry(); // Only call this once here to ensure one set of fields
     });
   }
 
@@ -94,7 +97,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://10.0.2.2:3000/api/getCVEducation?accountID=$accountID'),
+            'http://192.168.1.9:3000/api/getCVEducation?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -109,8 +112,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             _instituteCountryControllers.clear();
             _instituteStateControllers.clear();
             _instituteCityControllers.clear();
-            _startDateControllers.clear();
-            _endDateControllers.clear();
+            _startDateList.clear();
+            _endDateList.clear();
             _isPublicList.clear();
 
             if (data.isNotEmpty) {
@@ -128,28 +131,21 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                     .add(TextEditingController(text: entry['institute_state']));
                 _instituteCityControllers
                     .add(TextEditingController(text: entry['institute_city']));
-                _startDateControllers
-                    .add(TextEditingController(text: entry['start_date']));
-                _endDateControllers
-                    .add(TextEditingController(text: entry['end_date']));
+                _startDateList.add(entry['start_date'] ?? '');
+                _endDateList.add(entry['end_date'] ?? '');
               }
-            } else {
-              _addEducationEntry();
             }
+            // Do not call _addEducationEntry() here
           });
         }
       } else {
         print(
             'Failed to fetch education data. Status code: ${response.statusCode}');
-        if (mounted) {
-          _addEducationEntry();
-        }
+        // No need to call _addEducationEntry() here since it's already initialized in _initializeEducationEntries
       }
     } catch (e) {
       print('Error fetching education data: $e');
-      if (mounted) {
-        _addEducationEntry();
-      }
+      // No need to call _addEducationEntry() here
     }
   }
 
@@ -173,204 +169,189 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _instituteCountryControllers.add(TextEditingController());
       _instituteStateControllers.add(TextEditingController());
       _instituteCityControllers.add(TextEditingController());
-      _startDateControllers.add(TextEditingController());
-      _endDateControllers.add(TextEditingController());
+      _startDateList.add('');
+      _endDateList.add('');
       _isPublicList.add(true);
     });
   }
 
   Future<void> _saveEducationEntries() async {
-  final accountID = await _getAccountID();
-  if (accountID == null) return;
+    final accountID = await _getAccountID();
+    if (accountID == null) return;
 
-  List<Map<String, dynamic>> newEducationEntries = [];
-  List<Map<String, dynamic>> existingEducationEntries = [];
-  List<int> newEntryIndexes = []; // Keep track of new entries' indexes
+    List<Map<String, dynamic>> newEducationEntries = [];
+    List<Map<String, dynamic>> existingEducationEntries = [];
+    List<int> newEntryIndexes = []; // Keep track of new entries' indexes
 
-  // Convert existing entries to a set of unique combinations for validation
-  Set<String> existingEntries = _educationEntries.map((entry) {
-    return "${entry['level']?.toUpperCase()}_${entry['field_of_study']?.toUpperCase()}_${entry['institute_name']?.toUpperCase()}";
-  }).toSet();
+    bool hasError = false; // Track whether there's any validation error
+    Set<String> entrySet = {}; // Set to track unique education entries
 
-  for (int i = 0; i < _educationEntries.length; i++) {
-    // Check for default or empty values and skip saving this entry if found
-    if (_selectedLevels[i] == null ||
-        _fieldOfStudyControllers[i].text.isEmpty ||
-        _instituteNameControllers[i].text.isEmpty ||
-        _instituteCountryControllers[i].text.isEmpty ||
-        _instituteStateControllers[i].text.isEmpty ||
-        _instituteCityControllers[i].text.isEmpty ||
-        _startDateControllers[i].text.isEmpty ||
-        _endDateControllers[i].text.isEmpty) {
-      continue;
-    }
+    for (int i = 0; i < _educationEntries.length; i++) {
+      // Convert inputs to uppercase for consistency
+      String level = _selectedLevels[i]?.toUpperCase() ?? '';
+      String fieldOfStudy = _fieldOfStudyControllers[i].text.toUpperCase();
+      String instituteName = _instituteNameControllers[i].text.toUpperCase();
 
-    // Create a unique identifier for each entry to check for duplicates
-    String entryKey = "${_selectedLevels[i]?.toUpperCase()}_${_fieldOfStudyControllers[i].text.toUpperCase()}_${_instituteNameControllers[i].text.toUpperCase()}";
+      // Construct a unique key to detect duplicates
+      String uniqueKey = '$level-$fieldOfStudy-$instituteName';
 
-    // Check if the combination of level, field of study, and institute name is already saved
-    if (existingEntries.contains(entryKey) && _educationEntries[i]['eduBacID'] == null) {
-  String selectedLevel = _selectedLevels[i]?.toUpperCase() ?? 'Unknown Level'; // Get the selected level
-  String fieldOfStudy = _fieldOfStudyControllers[i].text.trim().toUpperCase(); // Get the field of study
-  
-  // Display the specific error message
-  showErrorDialog(
-    context,
-    'Duplicate entry: $selectedLevel in $fieldOfStudy.'
-  );
-  continue; // Skip saving this duplicate entry
-}
+      // Check for empty fields and show an error dialog
+      if (level.isEmpty ||
+          fieldOfStudy.isEmpty ||
+          instituteName.isEmpty ||
+          _instituteCountryControllers[i].text.isEmpty ||
+          _instituteStateControllers[i].text.isEmpty ||
+          _instituteCityControllers[i].text.isEmpty ||
+          _startDateList[i].isEmpty ||
+          _endDateList[i].isEmpty) {
+        hasError = true;
 
+        // Show an error message
+        showErrorDialog(
+          context,
+          'Please fill in all the fields for education entry ${i + 1}.',
+        );
 
-    // Mark the entry as unique by adding it to the set
-    existingEntries.add(entryKey);
-
-    // Convert all input fields to uppercase before saving
-    final entry = {
-      'eduBacID': _educationEntries[i]['eduBacID'],
-      'level': _selectedLevels[i]?.toUpperCase(),
-      'field_of_study': _fieldOfStudyControllers[i].text.toUpperCase(),
-      'institute_name': _instituteNameControllers[i].text.toUpperCase(),
-      'institute_country': _instituteCountryControllers[i].text.toUpperCase(),
-      'institute_state': _instituteStateControllers[i].text.toUpperCase(),
-      'institute_city': _instituteCityControllers[i].text.toUpperCase(),
-      'start_date': _startDateControllers[i].text.toUpperCase(),
-      'end_date': _endDateControllers[i].text.toUpperCase(),
-      'isPublic': _isPublicList[i],
-    };
-
-    if (_educationEntries[i]['eduBacID'] == null) {
-      newEducationEntries.add(entry);
-      newEntryIndexes.add(i); // Track the index of new entries in _educationEntries
-    } else {
-      existingEducationEntries.add(entry);
-    }
-  }
-
-  final body = jsonEncode({
-    'accountID': accountID,
-    'newEducationEntries': newEducationEntries,
-    'existingEducationEntries': existingEducationEntries,
-  });
-
-  try {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:3000/api/saveCVEducation'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-    final response2 = await http.post(
-      Uri.parse('http://10.0.2.2:3001/api/saino/saveCVEducation'),
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-
-    if (response.statusCode == 200 && response2.statusCode == 200) {
-      // Parse the response to get the new EduBacID entries
-      final responseData = jsonDecode(response.body);
-      List updatedEducations = responseData['newEducationEntriesWithID'];
-
-      // Correctly update only the new entries in _educationEntries
-      for (int i = 0; i < newEntryIndexes.length; i++) {
-        int index = newEntryIndexes[i]; // Get the index of the new entry
-        _educationEntries[index]['eduBacID'] =
-            updatedEducations[i]['EduBacID']; // Update with correct EduBacID
-        devtools.log("Added EduBacID to new entry at index: $index");
+        // Don't proceed further, but also don't toggle the editing state
+        break;
       }
 
-      devtools.log('Education entries saved successfully.');
-      setState(() {
-        _isEditing = false;
-      });
-    } else {
-      devtools.log(
-          'Failed to save education entries. Status code: ${response.statusCode}');
-      showErrorDialog(context, 'Failed to save education entries');
+      // Check for duplicates
+      if (entrySet.contains(uniqueKey)) {
+        hasError = true;
+
+        // Show an error message for duplicates
+        showErrorDialog(
+          context,
+          'Duplicate entry for education entry ${i + 1}. Please modify or remove it.',
+        );
+
+        // Don't proceed further, but also don't toggle the editing state
+        break;
+      }
+
+      // Add the unique key to the set to track this entry
+      entrySet.add(uniqueKey);
+
+      // Prepare entry for saving
+      final entry = {
+        'eduBacID': _educationEntries[i]['eduBacID'],
+        'level': level,
+        'field_of_study': fieldOfStudy,
+        'institute_name': instituteName,
+        'institute_country': _instituteCountryControllers[i].text.toUpperCase(),
+        'institute_state': _instituteStateControllers[i].text.toUpperCase(),
+        'institute_city': _instituteCityControllers[i].text.toUpperCase(),
+        'start_date': _startDateList[i],
+        'end_date': _endDateList[i],
+        'isPublic': _isPublicList[i],
+      };
+
+      if (_educationEntries[i]['eduBacID'] == null) {
+        newEducationEntries.add(entry);
+        newEntryIndexes.add(i); // Track the index of new entries
+      } else {
+        existingEducationEntries.add(entry);
+      }
     }
-  } catch (error) {
-    devtools.log('Error saving education entries: $error');
-    showErrorDialog(context, 'Error saving education entries');
+
+    // Exit early if there was an error
+    if (hasError) {
+      return;
+    }
+
+    final body = jsonEncode({
+      'accountID': accountID,
+      'newEducationEntries': newEducationEntries,
+      'existingEducationEntries': existingEducationEntries,
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.1.9:3000/api/saveCVEducation'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      final response2 = await http.post(
+        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVEducation'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200 && response2.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List updatedEducations = responseData['newEducationEntriesWithID'];
+
+        for (int i = 0; i < newEntryIndexes.length; i++) {
+          int index = newEntryIndexes[i]; // Get the index of the new entry
+          _educationEntries[index]['eduBacID'] =
+              updatedEducations[i]['EduBacID']; // Update with correct EduBacID
+          devtools.log("Added EduBacID to new entry at index: $index");
+        }
+
+        devtools.log('Education entries saved successfully.');
+        setState(() {
+          _isEditing = false; // Only turn off editing mode if successful
+        });
+      } else {
+        devtools.log(
+            'Failed to save education entries. Status code: ${response.statusCode}');
+        showErrorDialog(context, 'Failed to save education entries');
+      }
+    } catch (error) {
+      devtools.log('Error saving education entries: $error');
+      showErrorDialog(context, 'Error saving education entries');
+    }
   }
-}
-
-
-
-
 
   void _deleteEducationEntry(int index) async {
     final eduBacID = _educationEntries[index]['eduBacID'];
     final level = _educationEntries[index]['level'];
     final field_of_study = _educationEntries[index]['field_of_study'];
     final institute_name = _educationEntries[index]['institute_name'];
+
     if (eduBacID != null) {
-      final confirmation = await showDialog<bool>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text("Delete Confirmation"),
-            content: const Text("Are you sure you want to delete this entry?"),
-            actions: [
-              TextButton(
-                child: const Text("Cancel"),
-                onPressed: () {
-                  Navigator.of(context)
-                      .pop(false); // Close the dialog and return false
-                },
-              ),
-              TextButton(
-                child: const Text("Delete"),
-                onPressed: () {
-                  Navigator.of(context)
-                      .pop(true); // Close the dialog and return true
-                },
-              ),
-            ],
-          );
-        },
-      );
+      try {
+        final response = await http.post(
+          Uri.parse('http://192.168.1.9:3000/api/deleteCVEducation'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'eduBacID': eduBacID}),
+        );
+        final response2 = await http.post(
+          Uri.parse('http://192.168.1.9:3001/api/deleteCVEducation'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'level': level,
+            'field_of_study': field_of_study,
+            'institute_name': institute_name,
+          }),
+        );
 
-      if (confirmation == true) {
-        try {
-          final response = await http.post(
-            Uri.parse('http://10.0.2.2:3000/api/deleteCVEducation'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'eduBacID': eduBacID}),
-          );
-          final response2 = await http.post(
-            Uri.parse('http://10.0.2.2:3001/api/deleteCVEducation'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'level': level,
-              'field_of_study': field_of_study,
-              'institute_name': institute_name,
-            }),
-          );
+        if (response.statusCode == 200 && response2.statusCode == 200 ||
+            response2.statusCode == 404) {
+          setState(() {
+            _educationEntries.removeAt(index);
+            _selectedLevels.removeAt(index);
+            _fieldOfStudyControllers.removeAt(index);
+            _instituteNameControllers.removeAt(index);
+            _instituteCountryControllers.removeAt(index);
+            _instituteStateControllers.removeAt(index);
+            _instituteCityControllers.removeAt(index);
+            _startDateList.removeAt(index);
+            _endDateList.removeAt(index);
+            _isPublicList.removeAt(index);
 
-          if (response.statusCode == 200 && response2.statusCode == 200) {
-            setState(() {
-              _educationEntries.removeAt(index);
-              _selectedLevels.removeAt(index);
-              _fieldOfStudyControllers.removeAt(index);
-              _instituteNameControllers.removeAt(index);
-              _instituteCountryControllers.removeAt(index);
-              _instituteStateControllers.removeAt(index);
-              _instituteCityControllers.removeAt(index);
-              _startDateControllers.removeAt(index);
-              _endDateControllers.removeAt(index);
-              _isPublicList.removeAt(index);
-
-              if (_educationEntries.isEmpty) {
-                _addEducationEntry();
-              }
-            });
-            devtools.log("Education entry deleted successfully");
-          } else {
-            showErrorDialog(context, 'Failed to delete education entry');
-          }
-        } catch (e) {
-          devtools.log("Error deleting education entry: $e");
-          showErrorDialog(context, 'Error deleting education entry');
+            if (_educationEntries.isEmpty) {
+              _addEducationEntry();
+            }
+          });
+          devtools.log("Education entry deleted successfully");
+        } else {
+          showErrorDialog(context, 'Failed to delete education entry');
         }
+      } catch (e) {
+        devtools.log("Error deleting education entry: $e");
+        showErrorDialog(context, 'Error deleting education entry');
       }
     } else {
       setState(() {
@@ -381,8 +362,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         _instituteCountryControllers.removeAt(index);
         _instituteStateControllers.removeAt(index);
         _instituteCityControllers.removeAt(index);
-        _startDateControllers.removeAt(index);
-        _endDateControllers.removeAt(index);
+        _startDateList.removeAt(index);
+        _endDateList.removeAt(index);
         _isPublicList.removeAt(index);
 
         if (_educationEntries.isEmpty) {
@@ -394,14 +375,46 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
 
   void _toggleEditMode() async {
     if (_isEditing) {
-      await _saveEducationEntries();
+      await _saveEducationEntries(); // Save entries first
+    } else {
+      setState(() {
+        _isEditing = true; // Turn on editing mode when "Edit" is clicked
+      });
     }
-    setState(() {
-      _isEditing = !_isEditing;
-    });
+  }
+
+  Future<void> _selectMonthYear(
+      BuildContext context, int index, bool isStart) async {
+    DateTime? selectedDate = DateTime.now();
+    if (isStart) {
+      selectedDate = DateTime.tryParse(_startDateList[index]) ?? DateTime.now();
+    } else {
+      selectedDate = DateTime.tryParse(_endDateList[index]) ?? DateTime.now();
+    }
+
+    final DateTime? picked = await showMonthYearPicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (picked != null) {
+      setState(() {
+        String formattedDate =
+            '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
+        if (isStart) {
+          _startDateList[index] = formattedDate; // Save as year-month
+        } else {
+          _endDateList[index] = formattedDate; // Save as year-month
+        }
+      });
+    }
   }
 
   Widget _buildInputSection(BuildContext context, int index) {
+    bool isExistingEntry = _educationEntries[index]['eduBacID'] != null;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10.0),
       padding: const EdgeInsets.all(10.0),
@@ -434,33 +447,130 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             ),
           ),
           _buildDropdownField(
-              context, 'Level of Education', _educationLevels, index),
+            context,
+            'Level of Education',
+            _educationLevels,
+            index,
+            _isEditing &&
+                !isExistingEntry, // Pass the flag to disable if entry exists
+          ),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Field of Study',
-              _fieldOfStudyControllers[index], _isEditing),
+          _buildInputField(
+            context,
+            'Field of Study',
+            _fieldOfStudyControllers[index],
+            _isEditing && !isExistingEntry, // Disable if it's an existing entry
+          ),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Institute Name',
-              _instituteNameControllers[index], _isEditing),
+          _buildInputField(
+            context,
+            'Institute Name',
+            _instituteNameControllers[index],
+            _isEditing && !isExistingEntry, // Disable if it's an existing entry
+          ),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Institute Country',
-              _instituteCountryControllers[index], _isEditing),
+          _buildInputField(
+            context,
+            'Institute Country',
+            _instituteCountryControllers[index],
+            _isEditing, // This field can always be edited
+          ),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Institute State',
-              _instituteStateControllers[index], _isEditing),
+          _buildInputField(
+            context,
+            'Institute State',
+            _instituteStateControllers[index],
+            _isEditing, // This field can always be edited
+          ),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Institute City',
-              _instituteCityControllers[index], _isEditing),
+          _buildInputField(
+            context,
+            'Institute City',
+            _instituteCityControllers[index],
+            _isEditing, // This field can always be edited
+          ),
           const SizedBox(height: 15.0),
           Row(
             children: [
               Expanded(
-                child: _buildInputField(context, 'Start Date',
-                    _startDateControllers[index], _isEditing),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Start Date',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                        color: Color(0xFF171B63),
+                      ),
+                    ),
+                    const SizedBox(height: 8.0),
+                    GestureDetector(
+                      onTap: () => _isEditing
+                          ? _selectMonthYear(context, index, true)
+                          : null,
+                      child: Container(
+                        width: 150.0, // Set fixed width for Start Date input
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 15.0, vertical: 15.0),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Text(
+                          _startDateList[
+                              index], // Display the selected start date
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF171B63),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15.0),
+                  ],
+                ),
               ),
               const SizedBox(width: 15.0),
               Expanded(
-                child: _buildInputField(context, 'End Date',
-                    _endDateControllers[index], _isEditing),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'End Date',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                        color: Color(0xFF171B63),
+                      ),
+                    ),
+                    const SizedBox(height: 8.0),
+                    GestureDetector(
+                      onTap: () => _isEditing
+                          ? _selectMonthYear(context, index, false)
+                          : null,
+                      child: Container(
+                        width: 150.0, // Set fixed width for End Date input
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 15.0, vertical: 15.0),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Text(
+                          _endDateList[index], // Display the selected end date
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF171B63),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15.0),
+                  ],
+                ),
               ),
             ],
           ),
@@ -484,8 +594,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     );
   }
 
-  Widget _buildDropdownField(
-      BuildContext context, String labelText, List<String> items, int index) {
+  Widget _buildDropdownField(BuildContext context, String labelText,
+      List<String> items, int index, bool isEditable) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -493,13 +603,13 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         const SizedBox(height: 10.0),
         DropdownButtonFormField<String>(
           value: _selectedLevels[index],
-          onChanged: _isEditing
+          onChanged: isEditable
               ? (String? newValue) {
                   setState(() {
                     _selectedLevels[index] = newValue;
                   });
                 }
-              : null,
+              : null, // Disable the dropdown if it's not editable
           items: items.map<DropdownMenuItem<String>>((String value) {
             return DropdownMenuItem<String>(
               value: value,
@@ -511,14 +621,23 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                 OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(
+                  color: isEditable
+                      ? Colors.grey
+                      : Colors.black12), // Visual cue for non-editable
+              borderRadius: BorderRadius.circular(10.0),
+            ),
           ),
+          isExpanded: true, // Ensure the dropdown fills the available width
         ),
       ],
     );
   }
 
   Widget _buildInputField(BuildContext context, String labelText,
-      TextEditingController controller, bool isEditing) {
+      TextEditingController controller, bool isEditing,
+      {bool isError = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -529,11 +648,19 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
           enabled: isEditing,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            fontSize: 16,
+            color: Color(0xFF171B63),
           ),
           decoration: InputDecoration(
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                color: isError
+                    ? Colors.red
+                    : Colors.grey, // Red border if there's an error
+                width: 2.0,
+              ),
+            ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
           ),
@@ -576,7 +703,11 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
-                    onPressed: _addEducationEntry,
+                    onPressed: () {
+                      setState(() {
+                        _addEducationEntry();
+                      });
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF171B63),
                       padding: const EdgeInsets.symmetric(
@@ -619,4 +750,91 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       ),
     );
   }
+}
+
+// Month-Year Picker Function
+Future<DateTime?> showMonthYearPicker({
+  required BuildContext context,
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) {
+  return showDialog<DateTime>(
+    context: context,
+    builder: (BuildContext context) {
+      DateTime selectedDate = initialDate;
+
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Select Month and Year'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text('Month'),
+                  trailing: DropdownButton<int>(
+                    value: selectedDate.month,
+                    items: List.generate(12, (index) {
+                      return DropdownMenuItem(
+                        value: index + 1,
+                        child: Text(
+                          "${index + 1}",
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedDate = DateTime(selectedDate.year, value);
+                        });
+                      }
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Year'),
+                  trailing: DropdownButton<int>(
+                    value: selectedDate.year,
+                    items: List.generate(lastDate.year - firstDate.year + 1,
+                        (index) {
+                      return DropdownMenuItem(
+                        value: firstDate.year + index,
+                        child: Text(
+                          "${firstDate.year + index}",
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedDate = DateTime(value, selectedDate.month);
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop(selectedDate);
+                },
+              ),
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
 }

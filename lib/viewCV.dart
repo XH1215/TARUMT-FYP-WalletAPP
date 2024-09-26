@@ -28,7 +28,7 @@ class ViewCV extends StatelessWidget {
             _buildEducationSection(data['education']),
             _buildSectionTitle(Icons.work, 'Work Experience'),
             _buildWorkSection(data['workExperience']),
-            _buildSectionTitle(Icons.star, 'Qualifications'),
+            _buildSectionTitle(Icons.star, 'Certification'),
             _buildQualificationSection(data['qualification']),
             _buildSectionTitle(Icons.lightbulb, 'Soft Skills'),
             _buildSoftSkillsSection(data['softSkill']),

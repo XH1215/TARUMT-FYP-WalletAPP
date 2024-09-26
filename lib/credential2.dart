@@ -39,7 +39,7 @@ class Credential2State extends State<Credential2> {
       if (accountID != null) {
         final response = await http.get(
           Uri.parse(
-              'http://10.0.2.2:3000/api/getCertifications?accountID=$accountID'),
+              'http://192.168.1.9:3000/api/getCertifications?accountID=$accountID'),
         );
 
         if (response.statusCode == 200) {
@@ -79,7 +79,7 @@ class Credential2State extends State<Credential2> {
             _isPublicList[index] ? 1 : 0; // Convert bool to int (1 or 0)
 
         final response = await http.put(
-          Uri.parse('http://10.0.2.2:3000/api/updateCertificationStatus'),
+          Uri.parse('http://192.168.1.9:3000/api/updateCertificationStatus'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'accountID': accountID,

@@ -70,7 +70,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/getCVSkill?accountID=$accountID'),
+        Uri.parse('http://192.168.1.9:3000/api/getCVSkill?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -125,45 +125,53 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     List<Map<String, dynamic>> newSkillEntries = [];
     List<Map<String, dynamic>> existingSkillEntries = [];
 
-    // Convert all existing skill names to uppercase for comparison
-    List<String> existingSkillNames = _skillEntries
-        .map((entry) => entry['SoftHighlight'].toString().toUpperCase())
-        .toList();
+    // Keep track of all skill names for duplicate checking
+    Set<String> skillNamesSet = {};
+
+    bool hasError = false; // Track validation errors
 
     for (int i = 0; i < _skillEntries.length; i++) {
-      if (_softSkillControllers[i].text.isEmpty ||
-          _descriptionControllers[i].text.isEmpty) {
-        continue; // Skip if fields are empty
+      // Convert skill name and description to uppercase
+      String currentSkillName =
+          _softSkillControllers[i].text.trim().toUpperCase();
+      String currentDescription =
+          _descriptionControllers[i].text.trim().toUpperCase();
+
+      // Check if the skill name is a duplicate
+      if (skillNamesSet.contains(currentSkillName)) {
+        hasError = true;
+        showErrorDialog(context,
+            'Duplicate skill entry found: "$currentSkillName". Please remove duplicates.');
+        break; // Stop further processing
       }
+      skillNamesSet.add(
+          currentSkillName); // Add skill to set for further duplicate checks
 
-      // Convert the current skill name to uppercase for comparison
-      String currentSkillName = _softSkillControllers[i].text.toUpperCase();
-      String currentDescription = _descriptionControllers[i]
-          .text
-          .toUpperCase(); // Convert description to uppercase
-
-      // Check if the current skill name already exists (excluding the current entry being edited)
-      if (existingSkillNames.contains(currentSkillName) &&
-          _skillEntries[i]['SoftID'] == null) {
-        devtools.log("Duplicate skill found: $currentSkillName");
-        showErrorDialog(context, 'Duplicate skill name: $currentSkillName');
-        continue; // Skip saving this duplicate entry
+      // Check if any field is empty
+      if (currentSkillName.isEmpty || currentDescription.isEmpty) {
+        hasError = true;
+        showErrorDialog(
+            context, 'Please fill in all fields for entry ${i + 1}.');
+        break;
       }
 
       final entry = {
         'SoftID': _skillEntries[i]['SoftID'],
-        'SoftHighlight': currentSkillName,
+        'SoftHighlight': currentSkillName, // Save skill in uppercase
         'SoftDescription': currentDescription, // Save description in uppercase
         'isPublic': _isPublicList[i],
       };
 
       if (_skillEntries[i]['SoftID'] == null) {
         newSkillEntries.add(entry);
-        devtools.log("New Added");
       } else {
         existingSkillEntries.add(entry);
-        devtools.log("Existing Added");
       }
+    }
+
+    // Exit if there was a validation error
+    if (hasError) {
+      return;
     }
 
     final body = jsonEncode({
@@ -174,28 +182,31 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/saveCVSkill'),
+        Uri.parse('http://192.168.1.9:3000/api/saveCVSkill'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
 
       final response2 = await http.post(
-        Uri.parse('http://10.0.2.2:3001/api/saino/saveCVSkill'),
+        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVSkill'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
 
       if (response.statusCode == 200 && response2.statusCode == 200) {
-        // Assume the backend returns the newly generated SoftID for newSkillEntries
         final responseData = jsonDecode(response.body);
         List updatedSkills = responseData['newSkillEntriesWithID'];
 
-        // Update the _skillEntries with the generated SoftID
+        // Update the _skillEntries with the new generated SoftID
         for (int i = 0; i < newSkillEntries.length; i++) {
           _skillEntries[i]['SoftID'] = updatedSkills[i]['SoftID'];
         }
 
         devtools.log('Skill entries saved successfully.');
+        setState(() {
+          _isEditing =
+              false; // Only turn off editing mode if save is successful
+        });
       } else {
         devtools.log(
             'Failed to save skill entries. Status code: ${response.statusCode}');
@@ -213,12 +224,12 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     if (softID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://10.0.2.2:3000/api/deleteCVSkill'),
+          Uri.parse('http://192.168.1.9:3000/api/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'SoftID': softID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://10.0.2.2:3001/api/saino/deleteCVSkill'),
+          Uri.parse('http://192.168.1.9:3001/api/saino/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'InteHighlight': softHighlight}),
         );
@@ -256,11 +267,12 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
   void _toggleEditMode() async {
     if (_isEditing) {
-      await _saveSkills();
+      await _saveSkills(); // Save entries first
+    } else {
+      setState(() {
+        _isEditing = true; // Turn on editing mode when "Edit" is clicked
+      });
     }
-    setState(() {
-      _isEditing = !_isEditing;
-    });
   }
 
   Widget _buildInputSection(BuildContext context, int index) {
