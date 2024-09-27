@@ -1,3 +1,4 @@
+import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
 import 'package:flutter/material.dart';
 import 'view_profile.dart';
 import 'welcome.dart';
@@ -7,6 +8,9 @@ class Account extends StatelessWidget {
 
   Future<void> _logOut(BuildContext context) async {
     try {
+      final MSSQLAuthProvider _authProvider = MSSQLAuthProvider();
+
+      await _authProvider.logout();
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const WelcomePage()),
       );
@@ -96,17 +100,6 @@ class Account extends StatelessWidget {
                   context,
                   MaterialPageRoute(builder: (context) => const ViewProfile()),
                 ),
-              ),
-              const SizedBox(height: 20.0), // Space between boxes
-
-              // Using Icon for Change Password
-              _buildInfoBoxWithIcon(
-                context,
-                const Icon(Icons.lock, size: 50.0, color: Color(0xFF171B63)),
-                'Change Password',
-                () {
-                  // Handle change password functionality here
-                },
               ),
               const SizedBox(height: 20.0), // Space between boxes
 

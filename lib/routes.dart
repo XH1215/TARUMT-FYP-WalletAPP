@@ -7,3 +7,4 @@ const String softSkillInfoRoute = '/softSkillInfo';
 const String homeRoute = '/'; // Root route for HomePage
 const String loginRoute = '/login';
 const String generateQRRoute = 'generateQR';
+const String welcomeRoute = 'welcomeRoute';
