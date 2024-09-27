@@ -20,18 +20,18 @@ class _GenerateQRViewState extends State<GenerateQRView> {
 
   bool isLoading = false;
   String? errorMessage;
-
   // Data from backend
   Map<String, dynamic> userProfile = {};
   List<dynamic> userEducation = [];
   List<dynamic> userWorkExperience = [];
   List<dynamic> userCertifications = [];
-  List<dynamic> userSkills = []; // Add user skills
+  List<dynamic> userSkills = [];
 
   // Selected IDs
   List<int> selectedEduBacIDs = [];
   List<int> selectedCerIDs = [];
-  List<int> selectedSkillIDs = []; // Add selected skills
+  List<int> selectedSkillIDs = [];
+  List<int> selectedWorkExpIDs = []; // Separate list for Work Experience
 
   @override
   void initState() {
@@ -51,7 +51,7 @@ class _GenerateQRViewState extends State<GenerateQRView> {
 
       if (user != null) {
         final response = await http.post(
-          Uri.parse('http://192.168.1.9:3000/api/showDetails'),
+          Uri.parse('http://192.168.1.9:3000/api/showDetailsQR'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'accountID': user.accountID}),
         );
@@ -106,28 +106,24 @@ class _GenerateQRViewState extends State<GenerateQRView> {
       // Ensure that each ID string ends with a semicolon
       final EduBacID = selectedEduBacIDs.map((e) => '$e').join(';') + ';';
       final CerID = selectedCerIDs.map((e) => '$e').join(';') + ';';
-      final SkillsID = selectedSkillIDs.map((e) => '$e').join(';') + ';';
-
+      final SoftID = selectedSkillIDs.map((e) => '$e').join(';') + ';';
+      final WorkExpID = selectedWorkExpIDs.map((e) => '$e').join(';') + ';';
       // Ensure PerID always ends with a semicolon
       final PerID =
           userProfile['perID'] != null ? '${userProfile['perID']};' : '';
+      devtools.log("EduBacID:  " + EduBacID);
+      devtools.log("CerID:  " + CerID);
+      devtools.log("SoftID:  " + SoftID);
 
       // Construct the QR data to be sent to the backend
-      final qrData = {
-        'userID': user.accountID.toString(),
-        'EduBacID': EduBacID,
-        'CerID': CerID,
-        'SkillID': SkillsID,
-        'PerID': PerID, // Ensure PerID ends with a semicolon
-      };
 
       final response = await _authProvider.generateQRCode(
         userID: user.accountID.toString(),
         perID: PerID, // Send PerID with semicolon
         eduBacID: EduBacID,
         cerID: CerID,
-        intelID: '',
-        workExpID: '',
+        softID: SoftID,
+        workExpID: WorkExpID,
       );
 
       if (response != null) {
@@ -171,168 +167,158 @@ class _GenerateQRViewState extends State<GenerateQRView> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pop(context);
-        return true;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Generate QR Code'),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : errorMessage != null
-                  ? Center(child: Text(errorMessage!))
-                  : Form(
-                      key: _formKey,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 1. Profile Section
-                            const Text('Profile:',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            ListTile(
-                              title: Text(userProfile['name'] ?? 'No Name'),
-                              subtitle:
-                                  Text(userProfile['email'] ?? 'No Email'),
-                            ),
-                            const SizedBox(height: 16),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Generate QR Code'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : errorMessage != null
+                ? Center(child: Text(errorMessage!))
+                : Form(
+                    key: _formKey,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. Profile Section
+                          const Text('Profile:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          ListTile(
+                            title: Text(userProfile['name'] ?? 'No Name'),
+                            subtitle: Text(userProfile['email'] ?? 'No Email'),
+                          ),
+                          const SizedBox(height: 16),
 
-                            // 2. Education Section
-                            const Text('Education:',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            ExpansionTile(
-                              title: const Text('Select Education'),
-                              children: userEducation.map((edu) {
-                                return CheckboxListTile(
-                                  value: selectedEduBacIDs
-                                      .contains(edu['eduBacID']),
-                                  title: Text(edu['institute_name'] ?? ''),
-                                  subtitle: Text(edu['level'] ?? ''),
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        selectedEduBacIDs.add(edu['eduBacID']);
-                                      } else {
-                                        selectedEduBacIDs
-                                            .remove(edu['eduBacID']);
-                                      }
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
+                          // 2. Education Section
+                          const Text('Education:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          ExpansionTile(
+                            title: const Text('Select Education'),
+                            children: userEducation.map((edu) {
+                              return CheckboxListTile(
+                                value:
+                                    selectedEduBacIDs.contains(edu['eduBacID']),
+                                title: Text(edu['institute_name'] ?? ''),
+                                subtitle: Text(edu['level'] ?? ''),
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      selectedEduBacIDs.add(edu['eduBacID']);
+                                    } else {
+                                      selectedEduBacIDs.remove(edu['eduBacID']);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
 
-                            // 3. Work Experience Section
-                            const Text('Work Experience:',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            ExpansionTile(
-                              title: const Text('Select Work Experience'),
-                              children: userWorkExperience.map((work) {
-                                return CheckboxListTile(
-                                  value: selectedEduBacIDs
-                                      .contains(work['workExpID']),
-                                  title: Text(work['job_title'] ?? ''),
-                                  subtitle: Text(work['company_name'] ?? ''),
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        selectedEduBacIDs
-                                            .add(work['workExpID']);
-                                      } else {
-                                        selectedEduBacIDs
-                                            .remove(work['workExpID']);
-                                      }
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
+                          // 3. Work Experience Section
+                          const Text('Work Experience:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          ExpansionTile(
+                            title: const Text('Select Work Experience'),
+                            children: userWorkExperience.map((work) {
+                              return CheckboxListTile(
+                                value: selectedWorkExpIDs
+                                    .contains(work['workExpID']),
+                                title: Text(work['job_title'] ?? ''),
+                                subtitle: Text(work['company_name'] ?? ''),
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      selectedWorkExpIDs.add(work['workExpID']);
+                                    } else {
+                                      selectedWorkExpIDs
+                                          .remove(work['workExpID']);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
 
-                            // 4. Skills Section
-                            const Text('Skills:',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            ExpansionTile(
-                              title: const Text('Select Skills'),
-                              children: userSkills.map((skill) {
-                                return CheckboxListTile(
-                                  value: selectedSkillIDs
-                                      .contains(skill['SoftID']),
-                                  title: Text(skill['skill'] ?? ''),
-                                  subtitle: Text(skill['description'] ?? ''),
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        selectedSkillIDs.add(skill['SoftID']);
-                                      } else {
-                                        selectedSkillIDs
-                                            .remove(skill['SoftID']);
-                                      }
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
+                          // 4. Skills Section
+                          const Text('Skills:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          ExpansionTile(
+                            title: const Text('Select Skills'),
+                            children: userSkills.map((skill) {
+                              return CheckboxListTile(
+                                value:
+                                    selectedSkillIDs.contains(skill['SoftID']),
+                                title: Text(skill['skill'] ?? ''),
+                                subtitle: Text(skill['description'] ?? ''),
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      selectedSkillIDs.add(skill['SoftID']);
+                                    } else {
+                                      selectedSkillIDs.remove(skill['SoftID']);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
 
-                            // 5. Certification Section
-                            const Text('Certifications:',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            ExpansionTile(
-                              title: const Text('Select Certifications'),
-                              children: userCertifications.map((cert) {
-                                return CheckboxListTile(
-                                  value: selectedCerIDs.contains(cert['cerID']),
-                                  title: Text(cert['name'] ?? ''),
-                                  subtitle: Text(cert['issuer'] ?? ''),
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        selectedCerIDs.add(cert['cerID']);
-                                      } else {
-                                        selectedCerIDs.remove(cert['cerID']);
-                                      }
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 24),
+                          // 5. Certification Section
+                          const Text('Certifications:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          ExpansionTile(
+                            title: const Text('Select Certifications'),
+                            children: userCertifications.map((cert) {
+                              return CheckboxListTile(
+                                value: selectedCerIDs.contains(cert['cerID']),
+                                title: Text(cert['name'] ?? ''),
+                                subtitle: Text(cert['issuer'] ?? ''),
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      selectedCerIDs.add(cert['cerID']);
+                                    } else {
+                                      selectedCerIDs.remove(cert['cerID']);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 24),
 
-                            // Generate QR Code Button
-                            Center(
-                              child: ElevatedButton(
-                                onPressed: isLoading ? null : _generateQRCode,
-                                style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 40,
-                                    vertical: 15,
-                                  ),
+                          // Generate QR Code Button
+                          Center(
+                            child: ElevatedButton(
+                              onPressed: isLoading ? null : _generateQRCode,
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: isLoading
-                                    ? const CircularProgressIndicator()
-                                    : const Text('Generate QR Code'),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                  vertical: 15,
+                                ),
                               ),
+                              child: isLoading
+                                  ? const CircularProgressIndicator()
+                                  : const Text('Generate QR Code'),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-        ),
+                  ),
       ),
     );
   }

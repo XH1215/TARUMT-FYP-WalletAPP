@@ -17,12 +17,13 @@ let poolPromise = sql.connect(dbConfigWallet)
 
 // Generate QR Code and save in DB
 module.exports.generateQRCode = async (req, res) => {
-    const { userID, PerID, EduBacID, CerID, IntelID, WorkExpID } = req.body;
+    const { userID, PerID, EduBacID, CerID, SoftID, WorkExpID } = req.body;
     console.log("\n\nPerID is : " + PerID + "\n\n\n");
+    console.log("\n\n\n SoftSkill ID is: " + SoftID);
     try {
         const pool = await poolPromise;
 
-        const dataString = `PerID=${PerID};EduBacID=${EduBacID};CerID=${CerID};IntelID=${IntelID};WorkExpID=${WorkExpID}`;
+        const dataString = `PerID=${PerID};EduBacID=${EduBacID};CerID=${CerID};SoftID=${SoftID};WorkExpID=${WorkExpID}`;
         const timestamp = Date.now().toString();
         const dataToHash = `${userID}:${timestamp}:${dataString}`;
         const qrHash = crypto.createHash('sha256').update(dataToHash).digest('hex');
@@ -34,15 +35,15 @@ module.exports.generateQRCode = async (req, res) => {
             .input('PerID', sql.VarChar, PerID)
             .input('EduBacIDs', sql.VarChar, EduBacID)
             .input('CerIDs', sql.VarChar, CerID)
-            .input('IntelIDs', sql.VarChar, IntelID)
+            .input('SoftIDs', sql.VarChar, SoftID)
             .input('WorkExpIDs', sql.VarChar, WorkExpID)
             .input('QRHashCode', sql.VarChar, qrHash)
             .input('QRCodeImage', sql.VarBinary, qrCodeBuffer)
             .query(`
                 INSERT INTO QRPermission 
-                (userID, PerID, EduBacIDs, CerIDs, IntelIDs, WorkExpIDs, QRHashCode, ExpireDate, QRCodeImage) 
+                (userID, PerID, EduBacIDs, CerIDs, SoftIDs, WorkExpIDs, QRHashCode, ExpireDate, QRCodeImage) 
                 OUTPUT INSERTED.QRCodeImage
-                VALUES (@userID, @PerID, @EduBacIDs, @CerIDs, @IntelIDs, @WorkExpIDs, @QRHashCode, DATEADD(DAY, 30, GETDATE()), @QRCodeImage);
+                VALUES (@userID, @PerID, @EduBacIDs, @CerIDs, @SoftIDs, @WorkExpIDs, @QRHashCode, DATEADD(DAY, 30, GETDATE()), @QRCodeImage);
             `);
 
         const qrCodeImageBase64 = result.recordset[0].QRCodeImage.toString('base64');
@@ -108,7 +109,7 @@ module.exports.searchQRCode = async (req, res) => {
 
         const education = await fetchRelatedData('Education', 'EduBacID', splitIds(qrPermissionData.EduBacIDs));
         const qualification = await fetchRelatedData('Qualification', 'QuaID', splitIds(qrPermissionData.CerIDs));
-        const softSkill = await fetchRelatedData('Skills', 'IntelID', splitIds(qrPermissionData.IntelIDs));
+        const softSkill = await fetchRelatedData('SoftSkill', 'SoftID', splitIds(qrPermissionData.SoftIDs));
         const workExperience = await fetchRelatedData('Work', 'WorkExpID', splitIds(qrPermissionData.WorkExpIDs));
         const profile = qrPermissionData.PerID ? await fetchRelatedData('Profile', 'PerID', splitIds(qrPermissionData.PerID)) : null;
 
@@ -244,8 +245,8 @@ module.exports.fetchCVByQRCode = async (req, res) => {
         };
 
         const education = await fetchRelatedData('Education', 'EduBacID', splitIds(qrPermissionData.EduBacIDs));
-        const qualification = await fetchRelatedData('Qualification', 'QuaID', splitIds(qrPermissionData.CerIDs));
-        const softSkill = await fetchRelatedData('Skills', 'IntelID', splitIds(qrPermissionData.IntelIDs));
+        const qualification = await fetchRelatedData('Certification', 'CerID', splitIds(qrPermissionData.CerIDs));
+        const softSkill = await fetchRelatedData('SoftSkill', 'SoftID', splitIds(qrPermissionData.SoftIDs));
         const workExperience = await fetchRelatedData('Work', 'WorkExpID', splitIds(qrPermissionData.WorkExpIDs));
         const profile = qrPermissionData.PerID ? await fetchRelatedData('Profile', 'PerID', splitIds(qrPermissionData.PerID)) : null;
 

@@ -9,11 +9,11 @@ const { createWalletandDID } = require('../controllers/acapyRegister');
 const { receiveConnection } = require('../controllers/receiveConnection');
 const { receiveOffer } = require('../controllers/receiveOffer');
 const { getAuthToken, storeCredential, getWalletData } = require('../controllers/storeCredential');
-const {receiveExistedCredential} = require('../controllers/receiveExistedCredential');
-const {deleteCredential} = require('../controllers/deleteCredential');
+const { receiveExistedCredential } = require('../controllers/receiveExistedCredential');
+const { deleteCredential } = require('../controllers/deleteCredential');
 
 
-const { generateQRCode, fetchQRCodesByUserId, deleteQRCode,fetchCVByQRCode } = require('../controllers/qrController');
+const { generateQRCode, fetchQRCodesByUserId, deleteQRCode, fetchCVByQRCode } = require('../controllers/qrController');
 // receive dailog
 // const { checkForNewCredentials } = require('../controllers/credentialController');
 
@@ -37,8 +37,10 @@ const {
     getCVSkill,
     deleteCVSkill,
     showDetails,
+    showDetailsQR,
     getCertifications,
-    updateCertificationStatus
+    updateCertificationStatus,
+    saveCVCertification
 } = require('../controllers/cvController');
 
 /*const {
@@ -93,6 +95,8 @@ router.get('/getCVSkill', getCVSkill);
 router.post('/deleteCVSkill', deleteCVSkill);
 
 // CV-related routes
+
+router.post('/saveCVCertification', saveCVCertification);
 router.get('/getCertifications', getCertifications);
 router.post('/updateCertificationStatus', updateCertificationStatus);
 
@@ -102,11 +106,13 @@ router.post('/saveCVQuali', saveCVQuali);
 router.get('/getCVQualiInfo', getCVQualiInfo);
 
 router.post('/showDetails', showDetails);
+router.post('/showDetailsQR', showDetailsQR);
+
 
 router.post('/generateQRCode', generateQRCode); // Route to generate a QR code
 router.post('/fetchQRCodesByUserId', fetchQRCodesByUserId); // Route to fetch QR codes by account ID
-router.post('/deleteQRCode', deleteQRCode); 
-router.post('/fetchCVByQRCode', fetchCVByQRCode); 
+router.post('/deleteQRCode', deleteQRCode);
+router.post('/fetchCVByQRCode', fetchCVByQRCode);
 
 fetchCVByQRCode
 module.exports = router;

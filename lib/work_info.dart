@@ -447,13 +447,11 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
         title:
             Text('Work Experience', style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Container(
-        color: Colors.white,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(15.0),
           child: Column(
@@ -493,7 +491,6 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         ),
       ),
       bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [

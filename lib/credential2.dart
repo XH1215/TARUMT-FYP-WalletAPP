@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as devtools show log;
 
 class Credential2 extends StatefulWidget {
   const Credential2({super.key});
@@ -14,7 +15,6 @@ class Credential2State extends State<Credential2> {
   List<Map<String, dynamic>> _certifications = [];
   List<bool> _isPublicList = []; // Track public status for each certification
   bool _isLoading = true; // Track loading state
-  bool _isEditing = false; // Track edit mode
 
   @override
   void initState() {
@@ -50,8 +50,14 @@ class Credential2State extends State<Credential2> {
             _certifications = certifications
                 .map((item) => item as Map<String, dynamic>)
                 .toList();
-            _isPublicList = List<bool>.generate(_certifications.length,
-                (index) => false); // Default isPublic to false
+
+            // Initialize the _isPublicList based on the actual 'isPublic' boolean value
+            _isPublicList = List<bool>.generate(
+                _certifications.length,
+                (index) =>
+                    _certifications[index]['isPublic'] ==
+                    true); // Use the actual boolean value
+
             _isLoading = false; // Data fetched, stop loading
           });
         } else {
@@ -78,14 +84,18 @@ class Credential2State extends State<Credential2> {
         final isPublic =
             _isPublicList[index] ? 1 : 0; // Convert bool to int (1 or 0)
 
-        final response = await http.put(
+        // Create a copy of the certification data and add the isPublic flag
+        final certificationData =
+            Map<String, dynamic>.from(_certifications[index]);
+        certificationData['isPublic'] = isPublic;
+        devtools.log(certificationData.toString());
+        final response = await http.post(
           Uri.parse('http://192.168.1.9:3000/api/updateCertificationStatus'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'accountID': accountID,
-            'certificationName': _certifications[index]
-                ['Name'], // Use a unique identifier
-            'isPublic': isPublic,
+            'certification':
+                certificationData, // Pass entire certification data
           }),
         );
 
@@ -98,12 +108,6 @@ class Credential2State extends State<Credential2> {
     } catch (e) {
       print('Error updating public status: $e');
     }
-  }
-
-  void _toggleEditMode() {
-    setState(() {
-      _isEditing = !_isEditing;
-    });
   }
 
   @override
@@ -188,53 +192,29 @@ class Credential2State extends State<Credential2> {
                           ),
                           const SizedBox(height: 15.0),
                           Text(
-                            'Certification Acquire Date: ${certification['Certification Acquire Date'] ?? 'N/A'}',
+                            'CertificationAcquireDate: ${certification['CertificationAcquireDate'] ?? 'N/A'}',
                             style: const TextStyle(fontSize: 16.0),
                           ),
-                          if (_isEditing)
-                            Row(
-                              children: [
-                                Checkbox(
-                                  value: _isPublicList[index],
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      _isPublicList[index] = value ?? false;
-                                    });
-                                    // Update public status
-                                    _updatePublicStatus(index);
-                                  },
-                                ),
-                                const Text('Public'),
-                              ],
-                            ),
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: _isPublicList[index],
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    _isPublicList[index] = value ?? false;
+                                  });
+                                  // Update public status
+                                  _updatePublicStatus(index);
+                                },
+                              ),
+                              const Text('Public'),
+                            ],
+                          ),
                         ],
                       ),
                     );
                   },
                 ),
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            ElevatedButton(
-              onPressed: _toggleEditMode,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF171B63),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 60.0, vertical: 15.0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-              ),
-              child: Text(
-                _isEditing ? 'Save' : 'Edit',
-                style: const TextStyle(color: Colors.white, fontSize: 15.0),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

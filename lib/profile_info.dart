@@ -381,7 +381,6 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
         title: Text('Profile Information',
             style: AppWidget.headlineTextFieldStyle()),
@@ -399,7 +398,6 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               ],
             ),
       bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [

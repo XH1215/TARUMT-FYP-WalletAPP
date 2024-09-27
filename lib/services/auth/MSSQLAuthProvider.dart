@@ -145,7 +145,7 @@ class MSSQLAuthProvider implements AuthProvider {
     required String perID,
     required String eduBacID,
     required String cerID,
-    required String intelID,
+    required String softID,
     required String workExpID,
   }) async {
     try {
@@ -154,10 +154,10 @@ class MSSQLAuthProvider implements AuthProvider {
         'PerID': perID,
         'EduBacID': eduBacID,
         'CerID': cerID,
-        'IntelID': intelID,
+        'SoftID': softID,
         'WorkExpID': workExpID,
       };
-      devtools.log("\n\nPerID is : " + perID.toString() + "\n\n\n");
+      devtools.log("\n\nPerID is : " + softID.toString() + "\n\n\n");
       final response = await http.post(
         Uri.parse('$baseUrl/generateQRCode'),
         headers: <String, String>{
@@ -171,7 +171,7 @@ class MSSQLAuthProvider implements AuthProvider {
       if (response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
         devtools.log('QR Code Hash: ${responseData['qrHash']}');
-        devtools.log('QR Code Image Base64: ${responseData['qrCodeImage']}');
+
         return responseData;
       } else {
         throw GenericAuthException();

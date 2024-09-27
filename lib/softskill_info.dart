@@ -231,7 +231,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
         final response2 = await http.post(
           Uri.parse('http://192.168.1.9:3001/api/saino/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'InteHighlight': softHighlight}),
+          body: jsonEncode({'SoftHighlight': softHighlight}),
         );
         if (response.statusCode == 200 && response2.statusCode == 200) {
           setState(() {
@@ -375,13 +375,11 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
         title: Text('Skill Information',
             style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Container(
-        color: Colors.white,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(15.0),
           child: Column(
@@ -419,7 +417,6 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
         ),
       ),
       bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [

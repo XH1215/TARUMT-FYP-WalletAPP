@@ -32,30 +32,30 @@ module.exports.saveCVSkill = async (req, res) => {
                 if (isPublic === false) {
                     // Delete the existing skill if isPublic is unchecked (false)
                     await sainoPool.request()
-                        .input('InteHighlight', sql.NVarChar, SoftHighlight)
+                        .input('SoftHighlight', sql.NVarChar, SoftHighlight)
                         .query(`
-                            DELETE FROM Skills
-                            WHERE InteHighlight = @InteHighlight
+                            DELETE FROM SoftSkill
+                            WHERE SoftHighlight = @SoftHighlight
                         `);
                 } else {
                     // Update the existing skill if isPublic is true
                     await sainoPool.request()
-                        .input('InteHighlight', sql.NVarChar, SoftHighlight)
-                        .input('InteDescription', sql.NVarChar, SoftDescription)
+                        .input('SoftHighlight', sql.NVarChar, SoftHighlight)
+                        .input('SoftDescription', sql.NVarChar, SoftDescription)
                         .input('UserID', sql.Int, accountID)
                         .query(`
-        IF EXISTS (SELECT 1 FROM Skills WHERE InteHighlight = @InteHighlight)
+        IF EXISTS (SELECT 1 FROM SoftSkill WHERE SoftHighlight = @SoftHighlight)
         BEGIN
             -- Update the skill if it exists
-            UPDATE Skills
-            SET InteDescription = @InteDescription
-            WHERE InteHighlight = @InteHighlight
+            UPDATE SoftSkill
+            SET SoftDescription = @SoftDescription
+            WHERE SoftHighlight = @SoftHighlight
         END
         ELSE
         BEGIN
             -- Insert the skill if it doesn't exist
-            INSERT INTO Skills (UserID, InteHighlight, InteDescription)
-                            VALUES (@UserID, @InteHighlight, @InteDescription)
+            INSERT INTO SoftSkill (UserID, SoftHighlight, SoftDescription)
+                            VALUES (@UserID, @SoftHighlight, @SoftDescription)
         END
     `);
 
@@ -71,17 +71,17 @@ module.exports.saveCVSkill = async (req, res) => {
                 if (isPublic === true) {
                     await sainoPool.request()
                         .input('UserID', sql.Int, accountID)
-                        .input('InteHighlight', sql.NVarChar, SoftHighlight)
-                        .input('InteDescription', sql.NVarChar, SoftDescription)
+                        .input('SoftHighlight', sql.NVarChar, SoftHighlight)
+                        .input('SoftDescription', sql.NVarChar, SoftDescription)
                         .query(`
-                            INSERT INTO Skills (UserID, InteHighlight, InteDescription)
-                            VALUES (@UserID, @InteHighlight, @InteDescription)
+                            INSERT INTO SoftSkill (UserID, SoftHighlight, SoftDescription)
+                            VALUES (@UserID, @SoftHighlight, @SoftDescription)
                         `);
                 }
             }
         }
         // Sending success response after all operations are complete
-        res.status(200).send('Skills saved successfully');
+        res.status(200).send('SoftSkill saved successfully');
 
     } catch (e) {
         console.error('Error saving skills:', e.message);
@@ -91,20 +91,20 @@ module.exports.saveCVSkill = async (req, res) => {
 
 // Delete CV Skill
 module.exports.deleteCVSkill = async (req, res) => {
-    const { InteHighlight } = req.body;
+    const { SoftHighlight } = req.body;
 
     // Validate input
-    if (!InteHighlight) {
+    if (!SoftHighlight) {
         return res.status(400).send('Title is required');
     }
-    console.error("1:" + InteHighlight);
+    console.error("1:" + SoftHighlight);
     try {
         const sainoPool = await sainoPoolPromise;
 
         // Check if the skill exists
         const existingSkill = await sainoPool.request()
-            .input('InteHighlight', sql.NVarChar, InteHighlight)
-            .query('SELECT COUNT(*) AS count FROM Skills WHERE InteHighlight = @InteHighlight');
+            .input('SoftHighlight', sql.NVarChar, SoftHighlight)
+            .query('SELECT COUNT(*) AS count FROM SoftSkill WHERE SoftHighlight = @SoftHighlight');
 
         if (existingSkill.recordset[0].count === 0) {
             return res.status(404).send('Skill not found');
@@ -112,8 +112,8 @@ module.exports.deleteCVSkill = async (req, res) => {
 
         // Delete the skill from the database
         await sainoPool.request()
-            .input('InteHighlight', sql.NVarChar, InteHighlight)
-            .query('DELETE FROM Skills WHERE InteHighlight = @InteHighlight');
+            .input('SoftHighlight', sql.NVarChar, SoftHighlight)
+            .query('DELETE FROM SoftSkill WHERE SoftHighlight = @SoftHighlight');
 
         res.status(200).send('Skill deleted successfully');
     } catch (error) {

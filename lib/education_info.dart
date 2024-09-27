@@ -35,7 +35,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   final List<String> _educationLevels = [
     'HIGH SCHOOL',
     'FOUNDATION',
-    'COLLAGE',
+    'COLLEGE',
     'DIPLOMA',
     'BACHELOR’S DEGREE',
     'MASTER’S DEGREE',
@@ -678,13 +678,11 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
         title: Text('Education Information',
             style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Container(
-        color: Colors.white,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(15.0),
           child: Column(
@@ -726,7 +724,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         ),
       ),
       bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [

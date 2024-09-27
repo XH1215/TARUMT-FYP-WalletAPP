@@ -44,19 +44,38 @@ async function receiveOffer(req, res) {
 
         const credentialsWithIds = records.map(record => {
             const credentialPreview = record.cred_ex_record?.cred_offer?.credential_preview || null;
+            const attributes = credentialPreview?.attributes || [];
+
+            // Extracting individual attributes from the credential preview
+            const credentialType = attributes.find(attr => attr.name === "credentialType")?.value || "lissierdateadd";
+            const issuerName = attributes.find(attr => attr.name === "issuerName")?.value || "ChinXh";
+            const name = attributes.find(attr => attr.name === "name")?.value || "skddsje";
+            const email = attributes.find(attr => attr.name === "email")?.value || "chuqing@gmail.com";
+            const phoneNo = attributes.find(attr => attr.name === "phoneNo")?.value || "0194483310";
+            const description = attributes.find(attr => attr.name === "description")?.value || "skdjde";
+            const did = attributes.find(attr => attr.name === "did")?.value || "klk";
+            const issueDate = attributes.find(attr => attr.name === "issueDate")?.value || "2024-09-27";
+
             return {
                 cred_ex_id: record.cred_ex_record?.cred_ex_id || 'N/A',  // The credential exchange ID
-                credential: credentialPreview  // The credential preview (attributes), if it exists
+                credentialType,
+                issuerName,
+                name,
+                email,
+                phoneNo,
+                description,
+                did,
+                issueDate
             };
         });
 
         console.log("Store Done");
         console.log('Pending Credential Record:', credentialsWithIds);
 
-        // Respond with success message and credentials along with cred_ex_id and credential_preview
+        // Respond with success message and credentials along with cred_ex_id and extracted attributes
         res.status(200).json({
             message: "Pending Credential Retrieve Successfully!",
-            credentials: credentialsWithIds  // Pass credentials with cred_ex_id and attributes to frontend
+            credentials: credentialsWithIds  // Pass credentials with individual attributes to frontend
         });
 
     } catch (error) {
@@ -64,5 +83,6 @@ async function receiveOffer(req, res) {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+
 
 module.exports = { receiveOffer };

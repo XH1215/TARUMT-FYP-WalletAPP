@@ -23,9 +23,9 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       noDataMessage = null;
     });
 
-    final MSSQLAuthProvider _authProvider = MSSQLAuthProvider();
-    await _authProvider.initialize();
-    final user = _authProvider.currentUser;
+    final MSSQLAuthProvider authProvider = MSSQLAuthProvider();
+    await authProvider.initialize();
+    final user = authProvider.currentUser;
 
     if (user != null) {
       try {
@@ -136,24 +136,83 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     }
   }
 
-  // Function to call storeCredential API
-  Future<void> storeCredential(String credExId) async {
+// Function to call storeCredential and saveCVCertification APIs
+  Future<void> storeCredential(Map<String, dynamic> credential) async {
     if (authToken == null) {
       setState(() {
         noDataMessage = "Auth token not found.";
       });
       return;
     }
-
+    final MSSQLAuthProvider authProvider = MSSQLAuthProvider();
+    await authProvider.initialize();
+    final user = authProvider.currentUser;
+    // Extract necessary fields for saveCVCertification API
+    user?.accountID.toString() ?? '0'; // Use the user's accountID
+    Map<String, dynamic> credentialData = {
+      'accountID': user?.accountID.toString() ?? '0', // The user's account ID
+      'CerName': credential['name'] ?? 'N/A', // The name from the credential
+      'CerEmail': credential['email'] ?? 'N/A', // The email from the credential
+      'CerType': credential['credentialType'] ?? 'N/A', // The credential type
+      'CerIssuer': credential['issuerName'] ?? 'N/A', // The issuer name
+      'CerDescription': credential['description'] ?? 'N/A', // The description
+      'CerAcquiredDate': credential['issueDate'] ?? 'N/A', // The issue date
+      'credExId': credential['cred_ex_id'], // Send the credential exchange ID
+      'jwtToken': authToken, // The JWT token
+    };
     try {
-      devtools.log("Calling storeCredential API... \n$authToken");
+      devtools.log("Calling storeCredential and saveCVCertification API...");
 
+      // Step 1: Call saveCVCertification API
+      final saveToDB = await http.post(
+        Uri.parse('http://192.168.1.9:3000/api/saveCVCertification'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(credentialData),
+      );
+
+      if (saveToDB.statusCode == 200) {
+        devtools.log('Certification saved successfully.');
+        final saveData = json.decode(saveToDB.body);
+        devtools.log('Save Response: $saveData');
+      } else {
+        setState(() {
+          noDataMessage = "Failed to save certification.";
+          return;
+        });
+        devtools.log('Error saving certification: ${saveToDB.body}');
+      }
+      // Step 1: Call saveCVCertification API
+      final saveToDB2 = await http.post(
+        Uri.parse('http://192.168.1.9:3010/api/saveCVCertification'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(credentialData),
+      );
+
+      if (saveToDB2.statusCode == 200) {
+        devtools.log('Certification saved successfully.');
+        final saveData = json.decode(saveToDB2.body);
+        devtools.log('Save Response: $saveData');
+      } else {
+        setState(() {
+          noDataMessage = "Failed to save certification.";
+          return;
+        });
+        devtools.log('Error saving certification: ${saveToDB2.body}');
+      }
+      // Step 2: Call storeCredential API to accept the credential
       final response = await http.post(
         Uri.parse('http://192.168.1.9:3000/api/storeCredential'),
         headers: {
-          'Content-Type': 'application/json', // Add the header
+          'Content-Type': 'application/json',
         },
-        body: json.encode({'credExId': credExId, 'jwtToken': authToken}),
+        body: json.encode({
+          'credExId': credentialData['credExId'], // The credential exchange ID
+          'jwtToken': authToken,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -287,14 +346,10 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                                         vertical: 8.0, horizontal: 16.0),
                                     child: ListTile(
                                       title: Text(
-                                        'Title: ${credential['credential'] != null && credential['credential']['attributes'] != null ? credential['credential']['attributes'].firstWhere((attr) => attr['name'] == 'did', orElse: () => {
-                                              'value': 'N/A'
-                                            })['value'] : 'N/A'}',
+                                        'Title: ${credential['did'] ?? 'N/A'}', // Using the 'did' key from the credential directly
                                       ),
                                       subtitle: Text(
-                                        'Description:\n${credential['credential'] != null && credential['credential']['attributes'] != null ? credential['credential']['attributes'].firstWhere((attr) => attr['name'] == 'description', orElse: () => {
-                                              'value': 'N/A'
-                                            })['value'] : 'N/A'}',
+                                        'Description:\n${credential['description'] ?? 'N/A'}', // Using the 'description' key from the credential directly
                                       ),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -303,8 +358,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                                             onPressed: () {
                                               devtools.log(
                                                   'Received credential: ${credential['cred_ex_id']}');
-                                              storeCredential(credential[
-                                                  'cred_ex_id']); // Use cred_ex_id from API
+                                              storeCredential(
+                                                  credential); // Pass the entire credential object
                                             },
                                             child: const Text('Receive'),
                                           ),

@@ -213,7 +213,7 @@ module.exports.getCVProfile = async (req, res) => {
                     Address AS address, Description AS description, Photo AS profile_image_path 
                 FROM Profile 
                 WHERE AccountID = @accountID`);
-        
+
         // Check if any profile data was found
         if (result.recordset.length === 0) {
             return res.status(404).send('No profile data found');
@@ -577,6 +577,88 @@ module.exports.deleteCVWork = async (req, res) => {
     }
 };
 
+
+module.exports.saveCVCertification = async (req, res) => {
+    const { accountID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate } = req.body;
+    IsPublic = 1;
+    // Validate input
+    if (!accountID) {
+        return res.status(400).send('Account ID is required');
+    }
+    if (!CerName || !CerIssuer || !CerAcquiredDate) {
+        return res.status(400).send('Certification Name, Issuer, and Acquired Date are required');
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Insert new certification into the Certification table
+        const result = await pool.request()
+            .input('AccountID', sql.Int, accountID)
+            .input('CerName', sql.NVarChar(50), CerName)
+            .input('CerEmail', sql.NVarChar(50), CerEmail)
+            .input('CerType', sql.NVarChar(50), CerType)
+            .input('CerIssuer', sql.NVarChar(50), CerIssuer)
+            .input('CerDescription', sql.NVarChar(200), CerDescription)
+            .input('CerAcquiredDate', sql.DateTime, CerAcquiredDate)
+            .input('IsPublic', sql.Bit, IsPublic)
+            .query(`
+                INSERT INTO Certification (AccountID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate, IsPublic)
+                OUTPUT INSERTED.CerID
+                VALUES (@AccountID, @CerName, @CerEmail, @CerType, @CerIssuer, @CerDescription, @CerAcquiredDate, @IsPublic)
+            `);
+
+        // Return the new CerID along with a success message
+        res.status(200).json({
+            message: 'Certification saved successfully',
+            CerID: result.recordset[0].CerID,
+            CerName,
+            CerEmail,
+            CerType,
+            CerIssuer,
+            CerDescription,
+            CerAcquiredDate,
+            IsPublic
+        });
+    } catch (error) {
+        console.error('Error saving certification:', error.message);
+        res.status(500).send('Server error');
+    }
+};
+
+module.exports.getCVCertifications = async (req, res) => {
+    const { accountID } = req.body;
+
+    // Validate input
+    if (!accountID) {
+        return res.status(400).send('Account ID is required');
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Fetch all certifications for the given accountID
+        const result = await pool.request()
+            .input('AccountID', sql.Int, accountID)
+            .query(`
+                SELECT CerID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate, IsPublic
+                FROM Certification
+                WHERE AccountID = @AccountID
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).send('No certifications found for this account');
+        }
+
+        // Return the list of certifications
+        res.status(200).json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching certifications:', error.message);
+        res.status(500).send('Server error');
+    }
+};
+
+
 // CV Skill
 // Save CV Skill
 module.exports.saveCVSkill = async (req, res) => {
@@ -638,7 +720,7 @@ module.exports.saveCVSkill = async (req, res) => {
 
         // Return the new skills with their IDs along with a success message
         res.status(200).json({
-            message: 'Skills saved successfully',
+            message: 'SoftSkill saved successfully',
             newSkillEntriesWithID: newSkillsWithID
         });
     } catch (error) {
@@ -734,7 +816,7 @@ module.exports.getCertifications = async (req, res) => {
                   CerType AS [Certification Type], 
                   CerIssuer AS [Issuer], 
                   CerDescription AS [Description], 
-                  CerAcquiredDate AS [Certification Acquire Date],
+                  CerAcquiredDate AS [CertificationAcquireDate],
                   isPublic AS isPublic
                 FROM 
                   Certification 
@@ -750,34 +832,71 @@ module.exports.getCertifications = async (req, res) => {
     }
 };
 
-// Update Certification - Public
-module.exports.updateCertificationStatus = async (req, res) => {
-    const { accountID, certificationName, isPublic } = req.body;
 
-    if (!accountID || !certificationName || typeof isPublic !== 'number') {
+module.exports.updateCertificationStatus = async (req, res) => {
+    const { accountID, certification } = req.body;
+
+    if (!accountID || !certification) {
+        console.log("Missing accountID or certification data");
         return res.status(400).send('Missing required fields');
     }
 
     try {
         const pool = await poolPromise;
+
+        // Extract data from the certification object
+        const { Name, Email, isPublic, Type, Issuer, Description, CertificationAcquireDate } = certification;
+
+        // Update the Certification table in the database
         await pool.request()
             .input('accountID', sql.Int, accountID)
-            .input('certificationName', sql.VarChar, certificationName)
+            .input('certificationName', sql.VarChar, Name)
+            .input('certificationEmail', sql.VarChar, Email)
             .input('isPublic', sql.Int, isPublic)
             .query(`
               UPDATE Certification
               SET IsPublic = @isPublic
-              WHERE AccountID = @accountID AND CerName = @certificationName
+              WHERE AccountID = @accountID AND CerName = @certificationName AND CerEmail = @certificationEmail
             `);
 
-        res.status(200).send('Public status updated successfully');
+        console.log("Certification visibility updated successfully");
+
+        // Determine the external API URL based on the isPublic value
+        const apiUrl = isPublic
+            ? 'http://192.168.1.9:3010/api/updateCVCertification'
+            : 'http://192.168.1.9:3010/api/deleteCVCertification';
+
+        // Prepare the certification object for the external API call
+        const certData = {
+            accountID: accountID,
+            CerName: Name,
+            CerEmail: Email,
+            CerType: Type,
+            CerIssuer: Issuer,
+            CerDescription: Description,
+            CertificationAcquireDate: CertificationAcquireDate,
+        };
+
+        console.log(`Calling ${isPublic ? 'save' : 'delete'} certification API: ${apiUrl}`);
+
+        // Make the external API call
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(certData),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to call external API: ${response.statusText}`);
+        }
+
+        console.log(`API call to ${apiUrl} successful`);
+        res.status(200).send('Public status updated and external API call successful');
     } catch (error) {
-        console.error('Error updating public status:', error);
+        console.error('Error updating public status or calling external API:', error);
         res.status(500).send('Internal Server Error');
     }
 };
-
-
 
 
 
@@ -929,11 +1048,143 @@ module.exports.showDetails = async (req, res) => {
                 CONVERT(VARCHAR(10), EduEndDate, 120) AS end_date, 
                 IsPublic AS isPublic
             FROM Education 
+            WHERE AccountID = @accountID AND IsPublic = 1;
+        `;
+        const educationResult = await pool.request()
+            .input('accountID', sql.Int, accountID)
+            .query(educationQuery);
+
+        // Fetch Work Experience information
+        const workExperienceQuery = `
+            SELECT
+                WorkExpID AS workExpID, 
+                WorkTitle AS job_title, 
+                WorkCompany AS company_name, 
+                WorkIndustry AS industry, 
+                WorkCountry AS country, 
+                WorkState AS state, 
+                WorkCity AS city, 
+                WorkDescription AS description, 
+                CONVERT(VARCHAR(10), WorkStartDate, 120) AS start_date, 
+                CONVERT(VARCHAR(10), WorkEndDate, 120) AS end_date
+            FROM Work
+            WHERE AccountID = @accountID AND IsPublic = 1;
+        `;
+        const workExperienceResult = await pool.request()
+            .input('accountID', sql.Int, accountID)
+            .query(workExperienceQuery);
+
+        // Fetch SoftSkill information
+        const skillsQuery = `
+            SELECT 
+                SoftID AS SoftID,
+                SoftHighlight AS skill,
+                SoftDescription AS description,
+                IsPublic AS isPublic
+            FROM SoftSkill
+            WHERE AccountID = @accountID AND IsPublic = 1;
+        `;
+        const skillsResult = await pool.request()
+            .input('accountID', sql.Int, accountID)
+            .query(skillsQuery);
+
+        // Fetch Certifications information
+        const certificationsQuery = `
+    SELECT 
+        CerID AS cerID, 
+        CerName AS name, 
+        CerEmail AS email, 
+        CerType AS type, 
+        CerIssuer AS issuer, 
+        CerDescription AS description, 
+        CONVERT(VARCHAR(10), CerAcquiredDate, 120) AS acquiredDate,
+        IsPublic AS isPublic
+    FROM Certification 
+    WHERE AccountID = @accountID AND IsPublic = 1;
+`;
+
+        const certificationResult = await pool.request()
+            .input('accountID', sql.Int, accountID)
+            .query(certificationsQuery);
+
+        // Combine profile, education, work experience, skills, and certifications into a single object
+        const combinedDetails = {
+            profile: userDetails,  // Includes PerID
+            education: educationResult.recordset,
+            workExperience: workExperienceResult.recordset,
+            skills: skillsResult.recordset,
+            certification: certificationResult.recordset,
+        };
+
+        res.status(200).json(combinedDetails);
+    } catch (err) {
+        console.error('Show Details Error:', err);
+        res.status(500).json({ error: 'Server error. Please try again later.' });
+    }
+};
+module.exports.showDetailsQR = async (req, res) => {
+    try {
+        const { accountID } = req.body; // Get accountID from the request body
+
+        if (!accountID) {
+            return res.status(400).json({ error: 'AccountID is required' });
+        }
+
+        const pool = await poolPromise;
+
+        // Fetch Profile information, including PerID
+        const profileQuery = `
+            SELECT 
+                PerID AS perID,        -- Assuming PerID is the column for the profile ID
+                Name AS name, 
+                Age AS age, 
+                Email_Address AS email, 
+                Mobile_Number AS phone, 
+                Address AS address, 
+                Description AS description, 
+                Photo AS profile_image_path
+            FROM Profile
+            WHERE AccountID = @accountID
+        `;
+        const profileResult = await pool.request()
+            .input('accountID', sql.Int, accountID)
+            .query(profileQuery);
+
+        if (profileResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const userDetails = profileResult.recordset[0];
+        // If the user has a Photo, encode it in base64
+        if (userDetails.profile_image_path) {
+            userDetails.profile_image_path = Buffer.from(userDetails.profile_image_path).toString('base64');
+        }
+
+
+        console.log("\nFetch Profile Done");
+
+        // Fetch Education information
+        const educationQuery = `
+            SELECT 
+                EduBacID AS eduBacID, 
+                LevelEdu AS level, 
+                FieldOfStudy AS field_of_study, 
+                InstituteName AS institute_name, 
+                InstituteCountry AS institute_country, 
+                InstituteState AS institute_state, 
+                InstituteCity AS institute_city, 
+                CONVERT(VARCHAR(10), EduStartDate, 120) AS start_date, 
+                CONVERT(VARCHAR(10), EduEndDate, 120) AS end_date, 
+                IsPublic AS isPublic
+            FROM Education 
             WHERE AccountID = @accountID
         `;
         const educationResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(educationQuery);
+
+
+        console.log("\nFetch Education Done");
 
         // Fetch Work Experience information
         const workExperienceQuery = `
@@ -955,7 +1206,10 @@ module.exports.showDetails = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(workExperienceQuery);
 
-        // Fetch Skills information
+
+        console.log("\nFetch Work Done");
+
+        // Fetch SoftSkill information
         const skillsQuery = `
             SELECT 
                 SoftID AS SoftID,
@@ -968,6 +1222,9 @@ module.exports.showDetails = async (req, res) => {
         const skillsResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(skillsQuery);
+
+
+        console.log("\nFetch SoftSkill Done");
 
         // Fetch Certifications information
         const certificationsQuery = `
@@ -987,6 +1244,7 @@ module.exports.showDetails = async (req, res) => {
         const certificationResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(certificationsQuery);
+        console.log("\nFetch Certification Done");
 
         // Combine profile, education, work experience, skills, and certifications into a single object
         const combinedDetails = {
