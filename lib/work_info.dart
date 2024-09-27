@@ -302,7 +302,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         body: body,
       );
       final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVWork'),
+        Uri.parse('http://192.168.1.9:3010/api/saveCVWork'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -388,7 +388,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           'company_name': companyName,
         });
         final response2 = await http.post(
-          Uri.parse('http://192.168.1.9:3001/api/saino/deleteCVWork'),
+          Uri.parse('http://192.168.1.9:3010/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: body,
         );

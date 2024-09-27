@@ -1,6 +1,6 @@
 const sql = require('mssql');
-sql.globalConnectionPool = false;
 const dbConfigWallet = require('../config/dbConfigWallet');
+sql.globalConnectionPool = false;
 
 // Initialize SQL connection pool
 let poolPromise = new sql.connect(dbConfigWallet)

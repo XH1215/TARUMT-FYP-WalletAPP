@@ -1,21 +1,17 @@
 const express = require('express');
-const {
-    login,
-    register,
-    logout,
-} = require('../controllers/userController');
 
-const { createWalletandDID } = require('../controllers/acapyRegister');
-const { receiveConnection } = require('../controllers/receiveConnection');
-const { receiveOffer } = require('../controllers/receiveOffer');
-const { getAuthToken, storeCredential, getWalletData } = require('../controllers/storeCredential');
-const { receiveExistedCredential } = require('../controllers/receiveExistedCredential');
-const { deleteCredential } = require('../controllers/deleteCredential');
+const { login, register, logout } = require('../controllers/userController');
 
 
-const { generateQRCode, fetchQRCodesByUserId, deleteQRCode, fetchCVByQRCode } = require('../controllers/qrController');
-// receive dailog
-// const { checkForNewCredentials } = require('../controllers/credentialController');
+const { createWalletandDID } = require('../credential/acapyRegister');
+const { receiveConnection } = require('../credential/receiveConnection');
+const { receiveOffer } = require('../credential/receiveOffer');
+const { getAuthToken, storeCredential, getWalletData } = require('../credential/storeCredential');
+const { receiveExistedCredential } = require('../credential/receiveExistedCredential');
+const { deleteCredential } = require('../credential/deleteCredential');
+
+
+const { generateQRCode, fetchQRCodesByUserId, deleteQRCode, fetchCVByQRCode, searchQRCode } = require('../controllers/qrController');
 
 
 const {
@@ -43,9 +39,6 @@ const {
     saveCVCertification
 } = require('../controllers/cvController');
 
-/*const {
-    generateQRCode,
-} = require('../controllers/qrController');*/  // Uncomment to include QR code functionality
 
 const router = express.Router();
 
@@ -57,11 +50,7 @@ router.post('/getAuthToken', getAuthToken);
 router.post('/storeCredential', storeCredential);
 router.post('/getWalletData', getWalletData);
 router.post('/receiveExistedCredential', receiveExistedCredential);
-
 router.post('/deleteCredential', deleteCredential);
-// Add this route for checking credentials
-// router.get('/receiveCredentials/:email', checkForNewCredentials);
-
 
 
 // User-related routes
@@ -100,8 +89,6 @@ router.post('/saveCVCertification', saveCVCertification);
 router.get('/getCertifications', getCertifications);
 router.post('/updateCertificationStatus', updateCertificationStatus);
 
-
-
 router.post('/saveCVQuali', saveCVQuali);
 router.get('/getCVQualiInfo', getCVQualiInfo);
 
@@ -113,8 +100,10 @@ router.post('/generateQRCode', generateQRCode); // Route to generate a QR code
 router.post('/fetchQRCodesByUserId', fetchQRCodesByUserId); // Route to fetch QR codes by account ID
 router.post('/deleteQRCode', deleteQRCode);
 router.post('/fetchCVByQRCode', fetchCVByQRCode);
+router.post('/search-qrcode', searchQRCode);
 
-fetchCVByQRCode
+
+
 module.exports = router;
 
 

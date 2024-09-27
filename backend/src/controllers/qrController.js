@@ -215,7 +215,7 @@ module.exports.fetchCVByQRCode = async (req, res) => {
               WHERE QRPermissionID = @qrPermissionID 
               AND ExpireDate > GETDATE();  
             `);
-                console.log("searched");
+        console.log("searched");
         if (qrPermissionResult.recordset.length === 0) {
             return res.status(404).send('QR code not found or expired.');
         }
@@ -270,6 +270,75 @@ module.exports.fetchCVByQRCode = async (req, res) => {
             education,
             qualification,
             softSkill,
+            workExperience,
+        };
+
+        res.status(200).json(responseData);
+    } catch (err) {
+        console.error('QR Code Search Error: ', err);
+        res.status(500).send('Server error');
+    }
+};
+
+module.exports.searchQRCode = async (req, res) => {
+    const { qrHashCode } = req.body;
+
+    try {
+        const pool = await poolPromise;
+
+        // Check the input data
+        console.log(`Searching for QR code: ${qrHashCode}`);
+
+        const qrPermissionResult = await pool.request()
+            .input('qrHashCode', sql.NVarChar, qrHashCode)
+            .query(`
+                SELECT * 
+                FROM QRPermission 
+                WHERE QRHashCode = @qrHashCode
+                AND ExpireDate > GETDATE();
+            `);
+
+        if (qrPermissionResult.recordset.length === 0) {
+            console.log('QR code not found or expired.');
+            return res.status(404).send('QR code not found or expired.');
+        }
+
+        const qrPermissionData = qrPermissionResult.recordset[0];
+        console.log(`QR Permission Data:`, qrPermissionData);
+
+        const splitIds = (idString) => {
+            if (!idString) return [];
+            return idString.replace(/;$/, '').split(';').map(id => id.trim()).filter(id => id !== '');
+        };
+
+        const fetchRelatedData = async (table, column, ids) => {
+            const results = [];
+            for (let id of ids) {
+                const query = `SELECT * FROM ${table} WHERE CAST(${column} AS NVARCHAR) = @id`;
+                console.log(`Fetching from ${table} for ID: ${id}`); // Log query
+                const result = await pool.request()
+                    .input('id', sql.NVarChar, id)
+                    .query(query);
+                console.log(`Result from ${table}:`, result.recordset);
+                results.push(...result.recordset);
+            }
+            return results;
+        };
+
+        const education = await fetchRelatedData('Education', 'EduBacID', splitIds(qrPermissionData.EduBacIDs));
+        const qualification = await fetchRelatedData('Certification', 'CerID', splitIds(qrPermissionData.CerIDs));
+        const skills = await fetchRelatedData('SoftSkill', 'SoftID', splitIds(qrPermissionData.SoftIDs));
+        const workExperience = await fetchRelatedData('Work', 'WorkExpID', splitIds(qrPermissionData.WorkExpIDs));
+        const profile = qrPermissionData.PerID ? await fetchRelatedData('Profile', 'PerID', splitIds(qrPermissionData.PerID)) : null;
+
+        console.log('Skills:', skills); // Log skills
+        console.log('workExperience:', workExperience); // Log education
+
+        const responseData = {
+            profile: profile ? profile[0] : null,
+            education,
+            qualification,
+            skills,
             workExperience,
         };
 

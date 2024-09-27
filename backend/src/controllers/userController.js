@@ -1,7 +1,7 @@
 const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 const dbConfig = require('../config/dbConfigWallet');
-const { createWalletandDID } = require('./acapyRegister'); // Corrected import
+const { createWalletandDID } = require('../credential/acapyRegister'); // Corrected import
 
 let poolPromise = sql.connect(dbConfig)
     .then(pool => {

@@ -151,7 +151,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
       if (currentSkillName.isEmpty || currentDescription.isEmpty) {
         hasError = true;
         showErrorDialog(
-            context, 'Please fill in all fields for entry ${i + 1}.');
+            context, 'Please fill in all fields for skills entry ${i + 1}.');
         break;
       }
 
@@ -188,7 +188,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
       );
 
       final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVSkill'),
+        Uri.parse('http://192.168.1.9:3010/api/saveCVSkill'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -229,11 +229,11 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
           body: jsonEncode({'SoftID': softID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://192.168.1.9:3001/api/saino/deleteCVSkill'),
+          Uri.parse('http://192.168.1.9:3010/api/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'SoftHighlight': softHighlight}),
         );
-        if (response.statusCode == 200 && response2.statusCode == 200) {
+        if (response.statusCode == 200 && (response2.statusCode == 200 || response2.statusCode == 404)) {
           setState(() {
             _skillEntries.removeAt(index);
             _softSkillControllers.removeAt(index);

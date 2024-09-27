@@ -273,7 +273,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         body: body,
       );
       final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVEducation'),
+        Uri.parse('http://192.168.1.9:3010/api/saveCVEducation'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -318,7 +318,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
           body: jsonEncode({'eduBacID': eduBacID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://192.168.1.9:3001/api/deleteCVEducation'),
+          Uri.parse('http://192.168.1.9:3010/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'level': level,

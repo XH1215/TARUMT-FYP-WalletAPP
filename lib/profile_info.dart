@@ -293,7 +293,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
         body: jsonEncode(profileData),
       );
       final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3001/api/saino/saveCVProfile'),
+        Uri.parse('http://192.168.1.9:3010/api/saveCVProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
