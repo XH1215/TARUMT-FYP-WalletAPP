@@ -923,14 +923,14 @@ module.exports.saveCVSkill = async (req, res) => {
                 newSkillsWithID.push({
                     SoftID: result.recordset[0].SoftID,
                     SoftHighlight,
-                    SoftDescription
+                    SoftDescription,
+                    isPublic,
                 });
             }
         }
 
         const skillEntries = [...existingSkillEntries, ...newSkillsWithID];
-
-        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVWork';
+        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVSkill';
         const secondApiData = { ...req.body, skillEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {

@@ -35,6 +35,11 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
   List<TextEditingController> _softSkillControllers = [];
   List<TextEditingController> _descriptionControllers = [];
   List<bool> _isPublicList = [];
+  List<String?> _skillNameErrors = []; //here - Track skill name error messages
+  List<String?> _descriptionErrors =
+      []; //here - Track description error messages
+  List<int> newEntryIndexes = [];
+
   bool _isEditing = false;
   bool _isLoading = false;
 
@@ -51,6 +56,8 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
       _softSkillControllers.clear();
       _descriptionControllers.clear();
       _isPublicList.clear();
+      _skillNameErrors.clear();
+      _descriptionErrors.clear();
       _addSkillEntry(); // Only add one set of input fields initially
     });
   }
@@ -75,7 +82,8 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9:3000/api/getCVSkill?accountID=$accountID'),
+        Uri.parse(
+            'http://192.168.1.9:3000/api/getCVSkill?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -83,19 +91,25 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
         if (mounted) {
           setState(() {
+            //here
             _skillEntries.clear();
             _softSkillControllers.clear();
             _descriptionControllers.clear();
             _isPublicList.clear();
+            _skillNameErrors.clear();
+            _descriptionErrors.clear();
 
             if (data.isNotEmpty) {
               for (var entry in data) {
+                //here
                 _skillEntries.add(entry);
                 _isPublicList.add(entry['isPublic'] ?? true);
                 _softSkillControllers
                     .add(TextEditingController(text: entry['SoftHighlight']));
                 _descriptionControllers.add(TextEditingController(
                     text: entry['SoftDescription'] ?? ''));
+                _skillNameErrors.add(null); // Initialize error tracking
+                _descriptionErrors.add(null); // Initialize error tracking
               }
             }
           });
@@ -124,6 +138,9 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
       _softSkillControllers.add(TextEditingController());
       _descriptionControllers.add(TextEditingController());
       _isPublicList.add(true);
+      _skillNameErrors.add(null); // Initialize error tracking for the new entry
+      _descriptionErrors
+          .add(null); // Initialize error tracking for the new entry
     });
   }
 
@@ -134,46 +151,62 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     List<Map<String, dynamic>> newSkillEntries = [];
     List<Map<String, dynamic>> existingSkillEntries = [];
+    newEntryIndexes.clear(); // Clear any old indexes
 
-    // Keep track of all skill names for duplicate checking
     Set<String> skillNamesSet = {};
-
     bool hasError = false; // Track validation errors
 
+    // Reset errors dynamically
+    setState(() {
+      _skillNameErrors =
+          List.generate(_softSkillControllers.length, (index) => null);
+      _descriptionErrors =
+          List.generate(_descriptionControllers.length, (index) => null);
+    });
+
     for (int i = 0; i < _skillEntries.length; i++) {
-      // Convert skill name and description to uppercase
       String currentSkillName =
           _softSkillControllers[i].text.trim().toUpperCase();
       String currentDescription =
           _descriptionControllers[i].text.trim().toUpperCase();
 
-      // Check if the skill name is a duplicate
+      // Check for duplicate skill names
       if (skillNamesSet.contains(currentSkillName)) {
+        setState(() {
+          _skillNameErrors[i] = 'Duplicate skill name found.';
+        });
         hasError = true;
-        showErrorDialog(context,
-            'Duplicate skill entry found: "$currentSkillName". Please remove duplicates.');
-        break; // Stop further processing
+        break;
       }
-      skillNamesSet.add(
-          currentSkillName); // Add skill to set for further duplicate checks
 
-      // Check if any field is empty
-      if (currentSkillName.isEmpty || currentDescription.isEmpty) {
+      skillNamesSet.add(currentSkillName);
+
+      // Validate fields
+      if (currentSkillName.isEmpty) {
+        setState(() {
+          _skillNameErrors[i] = 'Skill name cannot be empty.';
+        });
         hasError = true;
-        showErrorDialog(
-            context, 'Please fill in all fields for skills entry ${i + 1}.');
+        break;
+      }
+      if (currentDescription.isEmpty) {
+        setState(() {
+          _descriptionErrors[i] = 'Description cannot be empty.';
+        });
+        hasError = true;
         break;
       }
 
       final entry = {
         'SoftID': _skillEntries[i]['SoftID'],
-        'SoftHighlight': currentSkillName, // Save skill in uppercase
-        'SoftDescription': currentDescription, // Save description in uppercase
+        'SoftHighlight': currentSkillName,
+        'SoftDescription': currentDescription,
         'isPublic': _isPublicList[i],
       };
 
       if (_skillEntries[i]['SoftID'] == null) {
         newSkillEntries.add(entry);
+        newEntryIndexes.add(i); // Track the index of the new entry
       } else {
         existingSkillEntries.add(entry);
       }
@@ -190,6 +223,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
       'newSkillEntries': newSkillEntries,
       'existingSkillEntries': existingSkillEntries,
     });
+    devtools.log("call softskill api");
 
     try {
       final response = await http.post(
@@ -197,20 +231,23 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
-
-      final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3010/api/saveCVSkill'),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      if (response.statusCode == 200 && response2.statusCode == 200) {
+      devtools.log(response.statusCode.toString());
+      if (!mounted) return;
+      if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        List updatedSkills = responseData['newSkillEntriesWithID'];
 
-        // Update the _skillEntries with the new generated SoftID
-        for (int i = 0; i < newSkillEntries.length; i++) {
-          _skillEntries[i]['SoftID'] = updatedSkills[i]['SoftID'];
+        List updatedSkills = responseData['newSkillsWithID'];
+
+        // Make sure updatedSkills and newSkillEntries have the same length before updating
+        if (updatedSkills.length == newSkillEntries.length) {
+          for (int i = 0; i < newSkillEntries.length; i++) {
+            _skillEntries[newEntryIndexes[i]]['SoftID'] =
+                updatedSkills[i]['SoftID'];
+            devtools.log(
+                "Added SoftID to new entry at index: ${newEntryIndexes[i]}");
+          }
+        } else {
+          devtools.log('Error: Mismatch between new skills and updated IDs.');
         }
 
         devtools.log('Skill entries saved successfully.');
@@ -235,7 +272,6 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
   void _deleteSkillEntry(int index) async {
     final softID = _skillEntries[index]['SoftID'];
-    final softHighlight = _skillEntries[index]['SoftHighlight'];
     if (softID != null) {
       try {
         final response = await http.post(
@@ -246,14 +282,17 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
         final response2 = await http.post(
           Uri.parse('http://192.168.1.9:3010/api/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'SoftHighlight': softHighlight}),
+          body: jsonEncode({'SoftID': softID}),
         );
-        if (response.statusCode == 200 && (response2.statusCode == 200 || response2.statusCode == 404)) {
+        if (response.statusCode == 200 && response2.statusCode == 200) {
           setState(() {
             _skillEntries.removeAt(index);
             _softSkillControllers.removeAt(index);
             _descriptionControllers.removeAt(index);
             _isPublicList.removeAt(index);
+            //here
+            _skillNameErrors.removeAt(index);
+            _descriptionErrors.removeAt(index);
 
             if (_skillEntries.isEmpty) {
               _addSkillEntry(); // Ensure at least one entry remains
@@ -266,12 +305,14 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
         showErrorDialog(context, 'Error deleting skill entry: $e');
       }
     } else {
-      // Handle case where SoftID is null
+      //here
       setState(() {
         _skillEntries.removeAt(index);
         _softSkillControllers.removeAt(index);
         _descriptionControllers.removeAt(index);
         _isPublicList.removeAt(index);
+        _skillNameErrors.removeAt(index);
+        _descriptionErrors.removeAt(index);
 
         if (_skillEntries.isEmpty) {
           _addSkillEntry(); // Ensure at least one entry remains
@@ -283,27 +324,24 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
   void _toggleEditMode() async {
     if (_isEditing) {
       setState(() {
-        _isLoading = true; // Start loading indicator when saving
+        _isLoading = true;
       });
 
       try {
-        // Perform save operation here
         await _saveSkills();
-
         setState(() {
-          _isEditing = false; // End edit mode after saving
+          _isEditing = false;
         });
       } catch (error) {
-        // Handle any errors during save
         devtools.log('Error saving data: $error');
       } finally {
         setState(() {
-          _isLoading = false; // Stop loading indicator after save completes
+          _isLoading = false;
         });
       }
     } else {
       setState(() {
-        _isEditing = true; // Start edit mode
+        _isEditing = true;
       });
     }
   }
@@ -340,21 +378,16 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
               ],
             ),
           ),
-          // Skill name (editable only if it's a new skill, i.e., SoftID is null)
+          _buildInputField(context, 'Skill Name', _softSkillControllers[index],
+              _isEditing, _skillNameErrors[index]),
+          const SizedBox(height: 15.0),
           _buildInputField(
               context,
-              'Skill Name',
-              _softSkillControllers[index],
-              _skillEntries[index]['SoftID'] == null &&
-                  _isEditing // Editable only for new entries
-              ),
+              'Description',
+              _descriptionControllers[index],
+              _isEditing,
+              _descriptionErrors[index]),
           const SizedBox(height: 15.0),
-
-          // Description (always editable in edit mode)
-          _buildInputField(context, 'Description',
-              _descriptionControllers[index], _isEditing),
-          const SizedBox(height: 15.0),
-
           if (_isEditing)
             Row(
               children: [
@@ -375,7 +408,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
   }
 
   Widget _buildInputField(BuildContext context, String labelText,
-      TextEditingController controller, bool isEditing) {
+      TextEditingController controller, bool isEditing, String? errorMessage) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -393,6 +426,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
                 OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            errorText: errorMessage, // Show error text under the field
           ),
         ),
       ],
@@ -417,54 +451,53 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
               child: CircularProgressIndicator(),
             )
           : SingleChildScrollView(
-          padding: const EdgeInsets.all(15.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _skillEntries.length,
-                itemBuilder: (context, index) {
-                  return _buildInputSection(context, index);
-                },
-              ),
-              const SizedBox(height: 10.0),
-              if (_isEditing)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
-                    onPressed: _isLoading
-                            ? null // Disable button when loading
+              padding: const EdgeInsets.all(15.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _skillEntries.length,
+                    itemBuilder: (context, index) {
+                      return _buildInputSection(context, index);
+                    },
+                  ),
+                  const SizedBox(height: 10.0),
+                  if (_isEditing)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        onPressed: _isLoading
+                            ? null
                             : () {
                                 setState(() {
                                   _addSkillEntry();
                                 });
                               },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF171B63),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40.0, vertical: 15.0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF171B63),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40.0, vertical: 15.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                        ),
+                        child: const Text('Add More Skills',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 16.0)),
                       ),
                     ),
-                    child: const Text('Add More Skills',
-                        style: TextStyle(color: Colors.white, fontSize: 16.0)),
-                  ),
-                ),
-              const SizedBox(height: 20.0),
-            ],
-          ),
-        ),
+                  const SizedBox(height: 20.0),
+                ],
+              ),
+            ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             ElevatedButton(
-              onPressed: _isLoading
-                  ? null // Disable button when loading
-                  : _toggleEditMode,
+              onPressed: _isLoading ? null : _toggleEditMode,
               style: ElevatedButton.styleFrom(
                 backgroundColor:
                     _isLoading ? Colors.grey : const Color(0xFF171B63),

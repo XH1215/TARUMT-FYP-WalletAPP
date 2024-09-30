@@ -13,8 +13,8 @@ class Credential2 extends StatefulWidget {
 
 class Credential2State extends State<Credential2> {
   List<Map<String, dynamic>> _certifications = [];
-  List<bool> _isPublicList = []; // Track public status for each certification
-  bool _isLoading = true; // Track loading state
+  List<bool> _isPublicList = [];
+  bool _isLoading = true; // Track overall loading state
 
   @override
   void initState() {
@@ -46,22 +46,17 @@ class Credential2State extends State<Credential2> {
           final Map<String, dynamic> data = json.decode(response.body);
           final List<dynamic> certifications = data['certifications'];
 
-          if (mounted) {
-            setState(() {
+          setState(() {
             _certifications = certifications
                 .map((item) => item as Map<String, dynamic>)
                 .toList();
 
-            // Initialize the _isPublicList based on the actual 'isPublic' boolean value
             _isPublicList = List<bool>.generate(
-                _certifications.length,
-                (index) =>
-                    _certifications[index]['isPublic'] ==
-                    true); // Use the actual boolean value
-
+              _certifications.length,
+              (index) => _certifications[index]['isPublic'] == true,
+            );
             _isLoading = false; // Data fetched, stop loading
           });
-          }
         } else {
           devtools.log(
               'Failed to load certifications. Status code: ${response.statusCode}');
@@ -80,43 +75,43 @@ class Credential2State extends State<Credential2> {
   }
 
   Future<void> _updatePublicStatus(int index) async {
+    setState(() {
+      _isLoading = true; // Disable all checkboxes during the update
+    });
+
     try {
       final accountID = await _getAccountID();
       if (accountID != null) {
         final isPublic =
             _isPublicList[index] ? 1 : 0; // Convert bool to int (1 or 0)
-        // Retrieve the CerID from the certifications data
-        final cerID = _certifications[index]['CerID'];
+
         final certificationData =
             Map<String, dynamic>.from(_certifications[index]);
         certificationData['isPublic'] = isPublic;
         devtools.log(certificationData.toString());
-        devtools.log(cerID.toString());
+        final response = await http.post(
+          Uri.parse('http://192.168.1.9:3000/api/updateCertificationStatus'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'accountID': accountID,
+            'certification':
+                certificationData, // Pass entire certification data
+          }),
+        );
 
-        if (cerID != null) {
-          final response = await http.post(
-            Uri.parse('http://192.168.1.9:3000/api/updateCertificationStatus'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({
-              'accountID': accountID,
-              'CerID': cerID, // Pass the CerID
-              'isPublic': isPublic, // Pass the public status
-              'certification': certificationData,
-            }),
-          );
-
-          if (response.statusCode == 200) {
-            devtools.log('Status updated successfully.');
-          } else {
-            devtools.log(
-                'Failed to update status. Status code: ${response.statusCode}');
-          }
+        if (response.statusCode == 200) {
+          devtools.log('Status updated successfully.');
         } else {
-          devtools.log('CerID not found for the selected certification.');
+          devtools.log(
+              'Failed to update status. Status code: ${response.statusCode}');
         }
       }
     } catch (e) {
       devtools.log('Error updating public status: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // Enable all checkboxes after the update
+      });
     }
   }
 
@@ -144,9 +139,10 @@ class Credential2State extends State<Credential2> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _certifications.isEmpty
+      body: Stack(
+        children: [
+          // Main content
+          _certifications.isEmpty && !_isLoading
               ? const Center(child: Text('No Certifications Found'))
               : ListView.builder(
                   itemCount: _certifications.length,
@@ -187,7 +183,7 @@ class Credential2State extends State<Credential2> {
                           ),
                           const SizedBox(height: 15.0),
                           Text(
-                            'Certification Type: ${certification['CertificationType'] ?? 'N/A'}',
+                            'Certification Type: ${certification['Certification Type'] ?? 'N/A'}',
                             style: const TextStyle(fontSize: 16.0),
                           ),
                           const SizedBox(height: 15.0),
@@ -202,20 +198,29 @@ class Credential2State extends State<Credential2> {
                           ),
                           const SizedBox(height: 15.0),
                           Text(
-                            'CertificationAcquireDate: ${certification['CertificationAcquireDate'] ?? 'N/A'}',
+                            'Certification Acquire Date: ${certification['CertificationAcquireDate'] ?? 'N/A'}',
                             style: const TextStyle(fontSize: 16.0),
                           ),
                           Row(
                             children: [
-                              Checkbox(
-                                value: _isPublicList[index],
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    _isPublicList[index] = value ?? false;
-                                  });
-                                  // Update public status
-                                  _updatePublicStatus(index);
-                                },
+                              Theme(
+                                data: ThemeData(
+                                  unselectedWidgetColor: _isLoading
+                                      ? Colors.grey // Disable color
+                                      : null,
+                                ),
+                                child: Checkbox(
+                                  value: _isPublicList[index],
+                                  onChanged: _isLoading
+                                      ? null // Disable checkbox when loading
+                                      : (bool? value) {
+                                          setState(() {
+                                            _isPublicList[index] =
+                                                value ?? false;
+                                          });
+                                          _updatePublicStatus(index);
+                                        },
+                                ),
                               ),
                               const Text('Public'),
                             ],
@@ -225,6 +230,13 @@ class Credential2State extends State<Credential2> {
                     );
                   },
                 ),
+          // Full screen loading indicator when _isLoading is true
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
+      ),
     );
   }
 }
