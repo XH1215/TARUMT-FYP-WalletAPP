@@ -715,7 +715,7 @@ module.exports.getCVWork = async (req, res) => {
                 FROM Work
                 WHERE AccountID = @accountID
             `);
-                    
+
         console.log('Query Result:', result.recordset);
 
         if (result.recordset.length === 0) {
@@ -928,11 +928,28 @@ module.exports.saveCVSkill = async (req, res) => {
             }
         }
 
-        // Return the new skills with their IDs along with a success message
-        res.status(200).json({
-            message: 'SoftSkill saved successfully',
-            newSkillEntriesWithID: newSkillsWithID
-        });
+        const skillEntries = [...existingSkillEntries, ...newSkillsWithID];
+
+        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVWork';
+        const secondApiData = { ...req.body, skillEntries }; // Pass the inserted entries with EduBacID
+        try {
+            const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            // Log response from the second API if necessary
+            console.log('Second API response:', secondApiResponse.data);
+
+            res.status(200).json({
+                newSkillsWithID: newSkillsWithID,
+            });
+            console.log("Success");
+        } catch (secondApiError) {
+            console.error('Error calling second API:', secondApiError.message);
+            res.status(500).send('Error calling second API: ' + secondApiError.message);
+        }
     } catch (error) {
         console.error('Error saving skills:', error.message);
         res.status(500).send('Server error');
