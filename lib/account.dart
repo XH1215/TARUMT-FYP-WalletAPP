@@ -2,21 +2,33 @@ import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
 import 'package:flutter/material.dart';
 import 'view_profile.dart';
 import 'welcome.dart';
+import 'dart:developer' as devtools show log;
 
-class Account extends StatelessWidget {
+class Account extends StatefulWidget {
   const Account({super.key});
 
-  Future<void> _logOut(BuildContext context) async {
-    try {
-      final MSSQLAuthProvider _authProvider = MSSQLAuthProvider();
+  @override
+  _AccountState createState() => _AccountState();
+}
 
-      await _authProvider.logout();
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const WelcomePage()),
-      );
+class _AccountState extends State<Account> {
+  bool _isLoggingOut = false; // To track the loading state during logout
+
+  Future<void> _logOut() async {
+    try {
+      setState(() {
+        _isLoggingOut = true; // Start loading
+      });
+
+      final MSSQLAuthProvider authProvider = MSSQLAuthProvider();
+      await authProvider.logout();
     } catch (e) {
-      print('Logout Error: $e');
+      devtools.log('Logout Error: $e');
       throw Exception('Failed to log out');
+    } finally {
+      setState(() {
+        _isLoggingOut = false; // Stop loading
+      });
     }
   }
 
@@ -46,26 +58,50 @@ class Account extends StatelessWidget {
     ).then((value) => value ?? false);
   }
 
-  void showLogoutSuccessDialog(BuildContext context) {
+  void showLogoutSuccessDialog() {
+    // Avoid using context here directly after async operations
     Future.delayed(Duration.zero, () {
-      showDialog<void>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Logged Out'),
-            content: const Text('You have successfully logged out.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+      if (mounted) {
+        showDialog<void>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Logged Out'),
+              content: const Text('You have successfully logged out.'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      }
     });
+  }
+
+  void _handleLogout() async {
+    bool shouldLogOut = await showLogOutDialog(context);
+    if (shouldLogOut) {
+      // Perform the logout operation
+      await _logOut();
+
+      // Now, after logout, navigate and show success message
+      if (mounted) {
+        // Navigate to the WelcomePage before showing success dialog
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const WelcomePage(),
+          ),
+        );
+
+        // Show the success dialog after navigation
+        showLogoutSuccessDialog();
+      }
+    }
   }
 
   @override
@@ -108,14 +144,14 @@ class Account extends StatelessWidget {
                 context,
                 const Icon(Icons.logout, size: 50.0, color: Color(0xFF171B63)),
                 'Logout',
-                () async {
-                  bool shouldLogOut = await showLogOutDialog(context);
-                  if (shouldLogOut) {
-                    await _logOut(context);
-                    showLogoutSuccessDialog(context);
-                  }
-                },
+                _handleLogout, // Safely handle logout and context navigation
               ),
+
+              if (_isLoggingOut) // Show loading indicator while logging out
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
             ],
           ),
         ),

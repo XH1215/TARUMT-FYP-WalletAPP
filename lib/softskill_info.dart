@@ -36,6 +36,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
   List<TextEditingController> _descriptionControllers = [];
   List<bool> _isPublicList = [];
   bool _isEditing = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -59,12 +60,16 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getInt('accountID');
     } catch (e) {
-      print('Error retrieving accountID: $e');
+      devtools.log('Error retrieving accountID: $e');
       return null;
     }
   }
 
   Future<void> _fetchSkillData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final accountID = await _getAccountID();
     if (accountID == null) return;
 
@@ -96,11 +101,15 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
           });
         }
       } else {
-        print(
+        devtools.log(
             'Failed to fetch skill data. Status code: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching skill data: $e');
+      devtools.log('Error fetching skill data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -121,6 +130,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
   Future<void> _saveSkills() async {
     final accountID = await _getAccountID();
     if (accountID == null) return;
+    if (!mounted) return;
 
     List<Map<String, dynamic>> newSkillEntries = [];
     List<Map<String, dynamic>> existingSkillEntries = [];
@@ -169,10 +179,11 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
       }
     }
 
-    // Exit if there was a validation error
-    if (hasError) {
-      return;
-    }
+    if (hasError) return;
+
+    setState(() {
+      _isLoading = true;
+    });
 
     final body = jsonEncode({
       'accountID': accountID,
@@ -215,6 +226,10 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     } catch (error) {
       devtools.log('Error saving skill entries: $error');
       showErrorDialog(context, 'Error saving skill entries');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -267,10 +282,28 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
   void _toggleEditMode() async {
     if (_isEditing) {
-      await _saveSkills(); // Save entries first
+      setState(() {
+        _isLoading = true; // Start loading indicator when saving
+      });
+
+      try {
+        // Perform save operation here
+        await _saveSkills();
+
+        setState(() {
+          _isEditing = false; // End edit mode after saving
+        });
+      } catch (error) {
+        // Handle any errors during save
+        devtools.log('Error saving data: $error');
+      } finally {
+        setState(() {
+          _isLoading = false; // Stop loading indicator after save completes
+        });
+      }
     } else {
       setState(() {
-        _isEditing = true; // Turn on editing mode when "Edit" is clicked
+        _isEditing = true; // Start edit mode
       });
     }
   }
@@ -379,8 +412,11 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
         title: Text('Skill Information',
             style: AppWidget.headlineTextFieldStyle()),
       ),
-      body: Container(
-        child: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : SingleChildScrollView(
           padding: const EdgeInsets.all(15.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,7 +434,13 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
-                    onPressed: _addSkillEntry,
+                    onPressed: _isLoading
+                            ? null // Disable button when loading
+                            : () {
+                                setState(() {
+                                  _addSkillEntry();
+                                });
+                              },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF171B63),
                       padding: const EdgeInsets.symmetric(
@@ -415,15 +457,17 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
             ],
           ),
         ),
-      ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             ElevatedButton(
-              onPressed: _toggleEditMode,
+              onPressed: _isLoading
+                  ? null // Disable button when loading
+                  : _toggleEditMode,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF171B63),
+                backgroundColor:
+                    _isLoading ? Colors.grey : const Color(0xFF171B63),
                 padding: const EdgeInsets.symmetric(
                     horizontal: 60.0, vertical: 15.0),
                 shape: RoundedRectangleBorder(

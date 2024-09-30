@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as devtools show log;
 
 // After user login
 Future<void> saveUserEmail(String email) async {
@@ -35,7 +36,7 @@ Future<void> _checkForNewCredentials() async {
     final email = prefs.getString('userEmail'); // Get the email from shared preferences
 
     if (email == null) {
-        print('User email not found. Please log in again.');
+        devtools.log('User email not found. Please log in again.');
         return;
     }
 
@@ -48,7 +49,7 @@ Future<void> _checkForNewCredentials() async {
         }
     } else {
         // Handle error response if needed
-        print('Error checking for new credentials: ${response.statusCode}');
+        devtools.log('Error checking for new credentials: ${response.statusCode}');
     }
 }
 

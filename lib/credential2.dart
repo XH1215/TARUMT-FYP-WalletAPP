@@ -28,7 +28,7 @@ class Credential2State extends State<Credential2> {
       final accountID = prefs.getInt('accountID');
       return accountID;
     } catch (e) {
-      print('Error retrieving accountID: $e');
+      devtools.log('Error retrieving accountID: $e');
       return null;
     }
   }
@@ -46,7 +46,8 @@ class Credential2State extends State<Credential2> {
           final Map<String, dynamic> data = json.decode(response.body);
           final List<dynamic> certifications = data['certifications'];
 
-          setState(() {
+          if (mounted) {
+            setState(() {
             _certifications = certifications
                 .map((item) => item as Map<String, dynamic>)
                 .toList();
@@ -60,17 +61,18 @@ class Credential2State extends State<Credential2> {
 
             _isLoading = false; // Data fetched, stop loading
           });
+          }
         } else {
-          print(
+          devtools.log(
               'Failed to load certifications. Status code: ${response.statusCode}');
-          print('Response body: ${response.body}');
+          devtools.log('Response body: ${response.body}');
           setState(() {
             _isLoading = false; // Stop loading even on error
           });
         }
       }
     } catch (e) {
-      print('Error fetching certifications: $e');
+      devtools.log('Error fetching certifications: $e');
       setState(() {
         _isLoading = false; // Stop loading on error
       });
@@ -83,30 +85,38 @@ class Credential2State extends State<Credential2> {
       if (accountID != null) {
         final isPublic =
             _isPublicList[index] ? 1 : 0; // Convert bool to int (1 or 0)
-
-        // Create a copy of the certification data and add the isPublic flag
+        // Retrieve the CerID from the certifications data
+        final cerID = _certifications[index]['CerID'];
         final certificationData =
             Map<String, dynamic>.from(_certifications[index]);
         certificationData['isPublic'] = isPublic;
         devtools.log(certificationData.toString());
-        final response = await http.post(
-          Uri.parse('http://192.168.1.9:3000/api/updateCertificationStatus'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'accountID': accountID,
-            'certification':
-                certificationData, // Pass entire certification data
-          }),
-        );
+        devtools.log(cerID.toString());
 
-        if (response.statusCode == 200) {
-          print('Status updated successfully.');
+        if (cerID != null) {
+          final response = await http.post(
+            Uri.parse('http://192.168.1.9:3000/api/updateCertificationStatus'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+              'accountID': accountID,
+              'CerID': cerID, // Pass the CerID
+              'isPublic': isPublic, // Pass the public status
+              'certification': certificationData,
+            }),
+          );
+
+          if (response.statusCode == 200) {
+            devtools.log('Status updated successfully.');
+          } else {
+            devtools.log(
+                'Failed to update status. Status code: ${response.statusCode}');
+          }
         } else {
-          print('Failed to update status. Status code: ${response.statusCode}');
+          devtools.log('CerID not found for the selected certification.');
         }
       }
     } catch (e) {
-      print('Error updating public status: $e');
+      devtools.log('Error updating public status: $e');
     }
   }
 
@@ -177,7 +187,7 @@ class Credential2State extends State<Credential2> {
                           ),
                           const SizedBox(height: 15.0),
                           Text(
-                            'Certification Type: ${certification['Certification Type'] ?? 'N/A'}',
+                            'Certification Type: ${certification['CertificationType'] ?? 'N/A'}',
                             style: const TextStyle(fontSize: 16.0),
                           ),
                           const SizedBox(height: 15.0),

@@ -18,17 +18,7 @@ const register = async (req, res) => {
 
     try {
         const pool = await poolPromise;
-        const walletResponse = await createWalletandDID(req, res); // Call and wait for response
 
-        // If wallet creation fails, handle the error and rollback if necessary
-        if (walletResponse instanceof Error) {
-            return res.status(500).json({
-                success: false,
-                message: walletResponse.message,
-                errorCode: 'WALLET_CREATION_FAILED',
-            });
-        }
-        // Check if email already exists
         const userExists = await pool.request()
             .input('email', sql.NVarChar, email)
             .query('SELECT AccountID FROM [Account] WHERE Email = @email');
@@ -41,7 +31,18 @@ const register = async (req, res) => {
                 errorCode: 'EMAIL_IN_USE',
             });
         }
+        const walletResponse = await createWalletandDID(req, res); // Call and wait for response
 
+        // If wallet creation fails, handle the error and rollback if necessary
+        if (walletResponse instanceof Error) {
+            return res.status(500).json({
+                success: false,
+                message: walletResponse.message,
+                errorCode: 'WALLET_CREATION_FAILED',
+            });
+        }
+        
+        // Check if email already exists
         // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 

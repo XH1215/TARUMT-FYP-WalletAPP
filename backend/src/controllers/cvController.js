@@ -216,7 +216,7 @@ module.exports.saveCVProfile = async (req, res) => {
         const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
         let PerID = passedPerID;
         // If PerID is passed from frontend, try to update the existing profile
-        if (PerID) {
+        if (PerID == 0) {
             console.log(`Attempting to update profile with PerID: ${PerID}`);
             // Try updating the profile using the provided PerID
             const updateResult = await pool.request()
@@ -585,17 +585,16 @@ module.exports.saveCVWork = async (req, res) => {
     try {
         const pool = await poolPromise;
         let newWorkWithID = []; // Array to store newly inserted work entries with their WorkExpID
-
+        console.log(req.body);
         // Process existing work entries (updates)
         if (existingWorkEntries && existingWorkEntries.length > 0) {
             for (let entry of existingWorkEntries) {
                 const {
-                    workExpID, job_title, company_name, industry,
+                    WorkExpID, job_title, company_name, industry,
                     country, state, city, description, start_date, end_date, isPublic
                 } = entry;
-
                 await pool.request()
-                    .input('WorkExpID', sql.Int, workExpID)
+                    .input('WorkExpID', sql.Int, WorkExpID)
                     .input('WorkTitle', sql.NVarChar, job_title)
                     .input('WorkCompany', sql.NVarChar, company_name)
                     .input('WorkIndustry', sql.NVarChar, industry)
@@ -648,16 +647,43 @@ module.exports.saveCVWork = async (req, res) => {
                 newWorkWithID.push({
                     WorkExpID: result.recordset[0].WorkExpID,
                     job_title,
-                    company_name
+                    company_name,
+                    industry,
+                    country,
+                    state,
+                    city,
+                    description,
+                    start_date,
+                    end_date,
+                    isPublic,
                 });
+                console.log("123");
+                console.log("WorkExpID: " + result.recordset[0].WorkExpID);
             }
         }
+        const workEntries = [...existingWorkEntries, ...newWorkWithID];
+        console.log(workEntries[0]);
 
-        // Send success response
-        res.status(200).json({
-            message: 'Work entries processed successfully',
-            newWorkWithID
-        });
+        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVWork';
+        const secondApiData = { ...req.body, workEntries }; // Pass the inserted entries with EduBacID
+        try {
+            const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            // Log response from the second API if necessary
+            console.log('Second API response:', secondApiResponse.data);
+
+            res.status(200).json({
+                newWorkWithID: newWorkWithID,
+            });
+            console.log("Success");
+        } catch (secondApiError) {
+            console.error('Error calling second API:', secondApiError.message);
+            res.status(500).send('Error calling second API: ' + secondApiError.message);
+        }
     } catch (error) {
         console.error('Error saving work info:', error);
         res.status(500).send('Failed to save work info');
@@ -675,7 +701,7 @@ module.exports.getCVWork = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(`
                 SELECT
-                    WorkExpID AS workExpID, 
+                    WorkExpID AS WorkExpID, 
                     WorkTitle AS job_title, 
                     WorkCompany AS company_name, 
                     WorkIndustry AS industry, 
@@ -689,7 +715,7 @@ module.exports.getCVWork = async (req, res) => {
                 FROM Work
                 WHERE AccountID = @accountID
             `);
-
+                    
         console.log('Query Result:', result.recordset);
 
         if (result.recordset.length === 0) {
@@ -705,20 +731,20 @@ module.exports.getCVWork = async (req, res) => {
 
 // Delete CV Work
 module.exports.deleteCVWork = async (req, res) => {
-    const { workExpID } = req.body;
+    const { WorkExpID } = req.body;
 
     try {
         const pool = await poolPromise;
 
         // Check if the work experience entry exists
         const existingWork = await pool.request()
-            .input('WorkExpID', sql.Int, workExpID)
+            .input('WorkExpID', sql.Int, WorkExpID)
             .query('SELECT COUNT(*) AS count FROM Work WHERE WorkExpID = @WorkExpID');
 
         if (existingWork.recordset[0].count > 0) {
             // Delete the work experience entry
             await pool.request()
-                .input('WorkExpID', sql.Int, workExpID)
+                .input('WorkExpID', sql.Int, WorkExpID)
                 .query('DELETE FROM Work WHERE WorkExpID = @WorkExpID');
 
             res.status(200).json({ message: 'Work experience deleted successfully' });
@@ -798,7 +824,7 @@ module.exports.saveCVCertification = async (req, res) => {
                 IsPublic,
                 secondApiResponse: secondApiResponse.data
             });
-        } else if(secondApiResponse.status === 501){
+        } else if (secondApiResponse.status === 501) {
             res.status(501).json({ message: 'Error saving certification in the second database' });
 
         }
@@ -995,9 +1021,10 @@ module.exports.getCertifications = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(`
                 SELECT 
+                CerID,
                   CerName AS [Name], 
                   CerEmail AS [Email], 
-                  CerType AS [Certification Type], 
+                  CerType AS [CertificationType], 
                   CerIssuer AS [Issuer], 
                   CerDescription AS [Description], 
                   CerAcquiredDate AS [CertificationAcquireDate],
@@ -1018,9 +1045,14 @@ module.exports.getCertifications = async (req, res) => {
 
 
 module.exports.updateCertificationStatus = async (req, res) => {
-    const { accountID, certification } = req.body;
+    const { accountID, CerID, isPublic, certification } = req.body;
+    console.log(accountID);
+    console.log(CerID);
+    console.log(isPublic);
 
-    if (!accountID || !certification) {
+    console.log("========");
+
+    if (!accountID || !CerID) {
         console.log("Missing accountID or certification data");
         return res.status(400).send('Missing required fields');
     }
@@ -1029,18 +1061,15 @@ module.exports.updateCertificationStatus = async (req, res) => {
         const pool = await poolPromise;
 
         // Extract data from the certification object
-        const { Name, Email, isPublic, Type, Issuer, Description, CertificationAcquireDate } = certification;
-
         // Update the Certification table in the database
         await pool.request()
             .input('accountID', sql.Int, accountID)
-            .input('certificationName', sql.VarChar, Name)
-            .input('certificationEmail', sql.VarChar, Email)
+            .input('CerID', sql.Int, CerID)
             .input('isPublic', sql.Int, isPublic)
             .query(`
               UPDATE Certification
               SET IsPublic = @isPublic
-              WHERE AccountID = @accountID AND CerName = @certificationName AND CerEmail = @certificationEmail
+              WHERE AccountID = @accountID AND CerID = @CerID
             `);
 
         console.log("Certification visibility updated successfully");
@@ -1049,16 +1078,13 @@ module.exports.updateCertificationStatus = async (req, res) => {
         const apiUrl = isPublic
             ? 'http://192.168.1.9:3010/api/updateCVCertification'
             : 'http://192.168.1.9:3010/api/deleteCVCertification';
-
+        console.log(apiUrl);
         // Prepare the certification object for the external API call
         const certData = {
             accountID: accountID,
-            CerName: Name,
-            CerEmail: Email,
-            CerType: Type,
-            CerIssuer: Issuer,
-            CerDescription: Description,
-            CertificationAcquireDate: CertificationAcquireDate,
+            CerID,
+            isPublic,
+            certification,
         };
 
         console.log(`Calling ${isPublic ? 'save' : 'delete'} certification API: ${apiUrl}`);
@@ -1241,7 +1267,7 @@ module.exports.showDetails = async (req, res) => {
         // Fetch Work Experience information
         const workExperienceQuery = `
             SELECT
-                WorkExpID AS workExpID, 
+                WorkExpID AS WorkExpID, 
                 WorkTitle AS job_title, 
                 WorkCompany AS company_name, 
                 WorkIndustry AS industry, 
@@ -1373,7 +1399,7 @@ module.exports.showDetailsQR = async (req, res) => {
         // Fetch Work Experience information
         const workExperienceQuery = `
             SELECT
-                WorkExpID AS workExpID, 
+                WorkExpID AS WorkExpID, 
                 WorkTitle AS job_title, 
                 WorkCompany AS company_name, 
                 WorkIndustry AS industry, 

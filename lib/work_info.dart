@@ -32,6 +32,7 @@ class WorkInfoPage extends StatefulWidget {
 
 class _WorkInfoPageState extends State<WorkInfoPage> {
   bool _isEditing = false;
+  bool _isLoading = false;
   List<Map<String, dynamic>> _workExperienceEntries = [];
   List<String?> _selectedIndustries = [];
   List<TextEditingController> _jobTitleControllers = [];
@@ -85,12 +86,16 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getInt('accountID');
     } catch (e) {
-      print('Error retrieving accountID: $e');
+      devtools.log('Error retrieving accountID: $e');
       return null;
     }
   }
 
   Future<void> _fetchWorkEntries() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final accountID = await _getAccountID();
     if (accountID == null) return;
 
@@ -102,30 +107,37 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
-        setState(() {
-          _workExperienceEntries =
-              List<Map<String, dynamic>>.from(data.map((entry) {
-            return {
-              'workExpID': entry['workExpID'],
-              'job_title': entry['job_title'],
-              'company_name': entry['company_name'],
-              'industry': entry['industry'],
-              'country': entry['country'],
-              'state': entry['state'],
-              'city': entry['city'],
-              'description': entry['description'],
-              'start_date': entry['start_date'],
-              'end_date': entry['end_date'],
-              'isPublic': entry['isPublic'],
-            };
-          }));
-          _initializeControllers();
-        });
+
+        if (mounted) {
+          setState(() {
+            _workExperienceEntries =
+                List<Map<String, dynamic>>.from(data.map((entry) {
+              return {
+                'WorkExpID': entry['WorkExpID'],
+                'job_title': entry['job_title'],
+                'company_name': entry['company_name'],
+                'industry': entry['industry'],
+                'country': entry['country'],
+                'state': entry['state'],
+                'city': entry['city'],
+                'description': entry['description'],
+                'start_date': entry['start_date'],
+                'end_date': entry['end_date'],
+                'isPublic': entry['isPublic'],
+              };
+            }));
+            _initializeControllers();
+          });
+        }
       } else {
         showErrorDialog(context, 'Failed to load work entries');
       }
     } catch (error) {
       devtools.log('No work entries: $error');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -215,16 +227,16 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   Future<void> _saveWorkEntries() async {
     final accountID = await _getAccountID();
     if (accountID == null) return;
+    if (!mounted) return;
 
     List<Map<String, dynamic>> newWorkEntries = [];
     List<Map<String, dynamic>> existingWorkEntries = [];
-    List<int> newEntryIndexes = []; // Track indexes of new entries
+    List<int> newEntryIndexes = [];
 
-    bool hasError = false; // To track if any validation error exists
-    Set<String> entrySet = {}; // To track unique work experience entries
+    bool hasError = false;
+    Set<String> entrySet = {};
 
     for (int i = 0; i < _workExperienceEntries.length; i++) {
-      // Convert job title, company name to uppercase for consistency
       String jobTitle = _jobTitleControllers[i].text.trim().toUpperCase();
       String companyName = _companyNameControllers[i].text.trim().toUpperCase();
       String industry = _selectedIndustries[i] == 'OTHERS'
@@ -234,7 +246,6 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       // Create a unique key for duplicate checking based on job title and company name
       String uniqueKey = '$jobTitle-$companyName';
 
-      // Check for empty fields and show an error dialog
       if (jobTitle.isEmpty ||
           companyName.isEmpty ||
           industry.isEmpty ||
@@ -261,9 +272,23 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       // Add the unique key to the set to track this entry
       entrySet.add(uniqueKey);
 
+      // Date validation
+      // Parse start date and end date for validation
+      DateTime startDate =
+          DateTime.tryParse(_startDateControllers[i].text) ?? DateTime.now();
+      DateTime endDate =
+          DateTime.tryParse(_endDateControllers[i].text) ?? DateTime.now();
+      // Validate that the start date is not later than the end date
+      if (startDate.isAfter(endDate)) {
+        hasError = true;
+        showErrorDialog(context,
+            'Start date cannot be later than end date for entry ${i + 1}.');
+        break; // Stop further execution if there's a date validation error
+      }
+
       // Prepare the work entry for saving
       final entry = {
-        'workExpID': _workExperienceEntries[i]['workExpID'],
+        'WorkExpID': _workExperienceEntries[i]['WorkExpID'],
         'job_title': jobTitle,
         'company_name': companyName,
         'industry': industry,
@@ -276,7 +301,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         'isPublic': _isPublicControllers[i],
       };
 
-      if (_workExperienceEntries[i]['workExpID'] == null) {
+      if (_workExperienceEntries[i]['WorkExpID'] == null) {
         newWorkEntries.add(entry);
         newEntryIndexes.add(i); // Track the index of the new entry
       } else {
@@ -284,10 +309,11 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       }
     }
 
-    // Exit early if there was a validation error
-    if (hasError) {
-      return;
-    }
+    if (hasError) return;
+
+    setState(() {
+      _isLoading = true;
+    });
 
     final body = jsonEncode({
       'accountID': accountID,
@@ -301,20 +327,15 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
-      final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3010/api/saveCVWork'),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
 
-      if (response.statusCode == 200 && response2.statusCode == 200) {
+      if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         List updatedWorkEntries = responseData['newWorkWithID'];
 
         // Correctly update new entries with their generated WorkExpID
         for (int i = 0; i < newEntryIndexes.length; i++) {
           int index = newEntryIndexes[i];
-          _workExperienceEntries[index]['workExpID'] =
+          _workExperienceEntries[index]['WorkExpID'] =
               updatedWorkEntries[i]['WorkExpID']; // Update the new WorkExpID
         }
 
@@ -330,15 +351,37 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     } catch (error) {
       devtools.log('Error saving work entries: $error');
       showErrorDialog(context, 'Error saving work entries');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   void _toggleEditMode() async {
     if (_isEditing) {
-      await _saveWorkEntries(); // Save entries first
+      setState(() {
+        _isLoading = true; // Start loading indicator when saving
+      });
+
+      try {
+        // Perform save operation here
+        await _saveWorkEntries();
+
+        setState(() {
+          _isEditing = false; // End edit mode after saving
+        });
+      } catch (error) {
+        // Handle any errors during save
+        devtools.log('Error saving data: $error');
+      } finally {
+        setState(() {
+          _isLoading = false; // Stop loading indicator after save completes
+        });
+      }
     } else {
       setState(() {
-        _isEditing = true; // Turn on editing mode when "Edit" is clicked
+        _isEditing = true; // Start edit mode
       });
     }
   }
@@ -346,7 +389,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   void _addWorkExperienceEntry() {
     setState(() {
       _workExperienceEntries.add({
-        'workExpID': null,
+        'WorkExpID': null,
         'job_title': '',
         'company_name': '',
         'industry': 'ACCOUNTING', // Set to default industry
@@ -373,27 +416,25 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Future<void> _deleteWorkExperienceEntry(int index) async {
-    final workExpID = _workExperienceEntries[index]['workExpID'];
-    final jobTitle = _workExperienceEntries[index]['job_title'];
-    final companyName = _workExperienceEntries[index]['company_name'];
-    if (workExpID != null) {
+    final WorkExpID = _workExperienceEntries[index]['WorkExpID'];
+
+    if (WorkExpID != null) {
       try {
         final response = await http.post(
           Uri.parse('http://192.168.1.9:3000/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'workExpID': workExpID}),
+          body: jsonEncode({'WorkExpID': WorkExpID}),
         );
-        final body = jsonEncode({
-          'job_title': jobTitle,
-          'company_name': companyName,
-        });
+
         final response2 = await http.post(
           Uri.parse('http://192.168.1.9:3010/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
-          body: body,
+          body: jsonEncode({'WorkExpID': WorkExpID}),
         );
+        if (!mounted) return;
+
         if (response.statusCode == 200 &&
-            (response2.statusCode == 200 || response2.statusCode == 404)) {
+            (response2.statusCode == 200 || response2.statusCode == 201)) {
           setState(() {
             _workExperienceEntries.removeAt(index);
             _jobTitleControllers.removeAt(index);
@@ -451,53 +492,64 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         title:
             Text('Work Experience', style: AppWidget.headlineTextFieldStyle()),
       ),
-      body: Container(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(15.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _workExperienceEntries.length,
-                itemBuilder: (context, index) {
-                  return _buildInputSection(context, index);
-                },
-              ),
-              const SizedBox(height: 10.0),
-              if (_isEditing)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
-                    onPressed: _addWorkExperienceEntry,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF171B63),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40.0, vertical: 15.0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(15.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _workExperienceEntries.length,
+                    itemBuilder: (context, index) {
+                      return _buildInputSection(context, index);
+                    },
+                  ),
+                  const SizedBox(height: 10.0),
+                  if (_isEditing)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        onPressed: _isLoading
+                            ? null // Disable button when loading
+                            : () {
+                                setState(() {
+                                  _addWorkExperienceEntry();
+                                });
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF171B63),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40.0, vertical: 15.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                        ),
+                        child: const Text(
+                          'Add More Work Experience',
+                          style: TextStyle(color: Colors.white, fontSize: 16.0),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      'Add More Work Experience',
-                      style: TextStyle(color: Colors.white, fontSize: 16.0),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 20.0),
-            ],
-          ),
-        ),
-      ),
+                  const SizedBox(height: 20.0),
+                ],
+              ),
+            ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             ElevatedButton(
-              onPressed: _toggleEditMode,
+              onPressed: _isLoading
+                  ? null // Disable button when loading
+                  : _toggleEditMode,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF171B63),
+                backgroundColor:
+                    _isLoading ? Colors.grey : const Color(0xFF171B63),
                 padding: const EdgeInsets.symmetric(
                     horizontal: 60.0, vertical: 15.0),
                 shape: RoundedRectangleBorder(
@@ -516,8 +568,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Widget _buildInputSection(BuildContext context, int index) {
-    // If workExpID is not null, the entry is already stored in the database
-    bool isExistingEntry = _workExperienceEntries[index]['workExpID'] != null;
+    // If WorkExpID is not null, the entry is already stored in the database
+    bool isExistingEntry = _workExperienceEntries[index]['WorkExpID'] != null;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10.0),
@@ -550,8 +602,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               ],
             ),
           ),
-          _buildInputField(context, 'Job Title', _jobTitleControllers[index],
-              _isEditing),
+          _buildInputField(
+              context, 'Job Title', _jobTitleControllers[index], _isEditing),
           const SizedBox(height: 15.0),
           _buildInputField(context, 'Company Name',
               _companyNameControllers[index], _isEditing),
@@ -647,7 +699,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       lastDate: DateTime(2101),
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         String formattedDate =
             '${picked.year}-${picked.month.toString().padLeft(2, '0')}';

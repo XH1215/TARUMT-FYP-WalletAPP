@@ -56,14 +56,14 @@ class _ViewStoredCredentialScreenState
             isLoading = false;
             noDataMessage = "Error fetching credentials.";
           });
-          print('Error fetching credentials: ${response.body}');
+          devtools.log('Error fetching credentials: ${response.body}');
         }
       } catch (error) {
         setState(() {
           isLoading = false;
           noDataMessage = "Error fetching data.";
         });
-        print('Error occurred: $error');
+        devtools.log('Error occurred: $error');
       }
     } else {
       setState(() {

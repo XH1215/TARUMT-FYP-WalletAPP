@@ -26,7 +26,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
   late TextEditingController _descriptionController;
-  late int PerID;
+  int PerID = 0;
   bool _isEditing = false; // Track whether the user is editing
   bool _isSaving = false; // Track whether the profile is being saved
   Map<String, String?> _errorMessages = {}; // Store error messages

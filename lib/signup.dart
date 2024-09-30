@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'login.dart'; // Import the LoginPage or correct path
+import 'dart:developer' as devtools show log;
 
 class AppWidget {
   static TextStyle headlineTextFieldStyle() {
@@ -58,6 +59,12 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _register(String email, String password) async {
+    if (!email.contains('@')) {
+      _showErrorDialog('Please enter a valid email address.');
+      return;
+    }
+
+
     if (password != _confirmPasswordController.text) {
       _showErrorDialog('Passwords do not match.');
       return;
@@ -66,7 +73,7 @@ class _SignUpPageState extends State<SignUpPage> {
     // Regular expression to check if the password contains at least one uppercase letter,
     // one lowercase letter, one digit, and one special character.
     final passwordRegExp =
-        RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#]).{8,}$');
+        RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@_$!%*?&#]).{8,}$');
 
     if (!passwordRegExp.hasMatch(password)) {
       _showErrorDialog(
@@ -104,7 +111,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     } catch (e) {
       _showErrorDialog('An error occurred. Please try again later.');
-      print('Registration error: $e');
+      devtools.log('Registration error: $e');
     }
   }
 
