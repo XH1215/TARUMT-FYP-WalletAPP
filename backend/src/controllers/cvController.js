@@ -1,5 +1,6 @@
 const sql = require('mssql');
 const dbConfigWallet = require('../config/dbConfigWallet');
+const axios = require('axios'); // Use axios for making HTTP requests from the backend
 sql.globalConnectionPool = false;
 
 // Initialize SQL connection pool
@@ -138,30 +139,92 @@ module.exports.getAccountEmail = async (req, res) => {
 
 // CV MANAGEMENT
 // CV Profile
-// Save CV Profile
+// // Save CV Profile
+// module.exports.saveCVProfile = async (req, res) => {
+//     const {
+//         accountID, Photo, name, age, email_address, mobile_number, address, description
+//     } = req.body;
+//     console.log(Photo);
+//     console.log("Try to save Photo");
+//     try {
+//         // Fetch the connection pool
+//         const pool = await poolPromise;
+//         const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
+//         // Check if profile exists in the Profile table
+//         console.log(profilePicBuffer);
+//         const existingProfile = await pool.request()
+//             .input('AccountID', sql.Int, accountID)
+//             .query('SELECT COUNT(*) AS count FROM Profile WHERE AccountID = @AccountID');
+
+//         // Update or insert into the Profile table
+//         if (existingProfile.recordset[0].count > 0) {
+//             await pool.request()
+//                 .input('AccountID', sql.Int, accountID)
+//                 .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
+//                 .input('Name', sql.NVarChar, name)
+//                 .input('Age', sql.NVarChar, age)
+//                 .input('Email_Address', sql.NVarChar, email_address)
+//                 .input('Mobile_Number', sql.NVarChar, mobile_number)
+//                 .input('Address', sql.NVarChar, address)
+//                 .input('Description', sql.NVarChar, description)
+//                 .query(`
+//                     UPDATE Profile
+//                     SET Photo = @Photo, Name = @Name, Age = @Age, Email_Address = @Email_Address, 
+//                         Mobile_Number = @Mobile_Number, Address = @Address, Description = @Description
+//                     WHERE AccountID = @AccountID
+//                 `);
+//         } else {
+//             await pool.request()
+//                 .input('AccountID', sql.Int, accountID)
+//                 .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
+//                 .input('Name', sql.NVarChar, name)
+//                 .input('Age', sql.Int, age)
+//                 .input('Email_Address', sql.NVarChar, email_address)
+//                 .input('Mobile_Number', sql.NVarChar, mobile_number)
+//                 .input('Address', sql.NVarChar, address)
+//                 .input('Description', sql.NVarChar, description)
+//                 .query(`
+//                     INSERT INTO Profile (
+//                         AccountID, Photo, Name, Age, Email_Address, Mobile_Number, Address, Description
+//                     ) VALUES (
+//                         @AccountID, @Photo, @Name, @Age, @Email_Address, @Mobile_Number, @Address, @Description
+//                     )
+//                 `);
+//         }
+//         console.log("Try to save Photo successful");
+
+
+//         res.status(200).send('Profile saved successfully');
+//     } catch (error) {
+//         console.error('Error saving profile:', error);
+//         res.status(500).send('Failed to save profile');
+//     }
+// };
+
+
+
 module.exports.saveCVProfile = async (req, res) => {
     const {
-        accountID, Photo, name, age, email_address, mobile_number, address, description
+        accountID, Photo, name, age, email_address, mobile_number, address, description, PerID: passedPerID
     } = req.body;
-    console.log(Photo);
-    console.log("Try to save Photo");
+
+    console.log("Try to save profile data:  " + passedPerID);
+
     try {
         // Fetch the connection pool
         const pool = await poolPromise;
         const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
-        // Check if profile exists in the Profile table
-        console.log(profilePicBuffer);
-        const existingProfile = await pool.request()
-            .input('AccountID', sql.Int, accountID)
-            .query('SELECT COUNT(*) AS count FROM Profile WHERE AccountID = @AccountID');
-
-        // Update or insert into the Profile table
-        if (existingProfile.recordset[0].count > 0) {
-            await pool.request()
+        let PerID = passedPerID;
+        // If PerID is passed from frontend, try to update the existing profile
+        if (PerID) {
+            console.log(`Attempting to update profile with PerID: ${PerID}`);
+            // Try updating the profile using the provided PerID
+            const updateResult = await pool.request()
+                .input('PerID', sql.Int, PerID)
                 .input('AccountID', sql.Int, accountID)
                 .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
                 .input('Name', sql.NVarChar, name)
-                .input('Age', sql.NVarChar, age)
+                .input('Age', sql.Int, age)
                 .input('Email_Address', sql.NVarChar, email_address)
                 .input('Mobile_Number', sql.NVarChar, mobile_number)
                 .input('Address', sql.NVarChar, address)
@@ -170,10 +233,23 @@ module.exports.saveCVProfile = async (req, res) => {
                     UPDATE Profile
                     SET Photo = @Photo, Name = @Name, Age = @Age, Email_Address = @Email_Address, 
                         Mobile_Number = @Mobile_Number, Address = @Address, Description = @Description
-                    WHERE AccountID = @AccountID
+                    OUTPUT INSERTED.PerID
+                    WHERE PerID = @PerID AND AccountID = @AccountID
                 `);
+
+            // Check if update was successful
+            if (updateResult.recordset.length === 0) {
+                console.error(`No profile found with PerID: ${PerID} for AccountID: ${accountID}`);
+                return res.status(404).send('Profile not found for update.');
+            }
+
+            // Use the returned PerID after the update
+            PerID = updateResult.recordset[0]?.PerID;
+
         } else {
-            await pool.request()
+            // If PerID is not provided, insert a new profile and return the new PerID
+            console.log("No PerID provided, inserting new profile.");
+            const insertResult = await pool.request()
                 .input('AccountID', sql.Int, accountID)
                 .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
                 .input('Name', sql.NVarChar, name)
@@ -185,20 +261,54 @@ module.exports.saveCVProfile = async (req, res) => {
                 .query(`
                     INSERT INTO Profile (
                         AccountID, Photo, Name, Age, Email_Address, Mobile_Number, Address, Description
-                    ) VALUES (
+                    ) OUTPUT INSERTED.PerID VALUES (
                         @AccountID, @Photo, @Name, @Age, @Email_Address, @Mobile_Number, @Address, @Description
                     )
                 `);
+
+            // Retrieve the new PerID from the insert result
+            PerID = insertResult.recordset[0]?.PerID;
         }
-        console.log("Try to save Photo successful");
 
+        // If no PerID was returned, something went wrong
+        if (!PerID) {
+            console.error("Failed to generate or retrieve PerID.");
+            return res.status(501).send('Fail to Save Profile: No PerID generated.');
+        }
 
-        res.status(200).send('Profile saved successfully');
+        console.log("PerID:", PerID);
+
+        // Call the second API, passing the PerID and other profile data
+        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVProfile';
+        const profileData = { ...req.body, PerID }; // Add PerID to profile data
+
+        try {
+            const secondApiResponse = await axios.post(secondApiUrl, profileData, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            console.log('Second API response:', secondApiResponse.data);
+
+            // Return success response to the frontend
+            res.status(200).json({
+                message: PerID ? 'Profile updated successfully' : 'Profile created successfully',
+                PerID,
+                secondApiResponse: secondApiResponse.data
+            });
+
+        } catch (secondApiError) {
+            console.error('Error calling second API:', secondApiError.message);
+            return res.status(502).send('Failed to Save Into Second Database: ' + secondApiError.message);
+        }
+
     } catch (error) {
         console.error('Error saving profile:', error);
-        res.status(500).send('Failed to save profile');
+        return res.status(500).send('Failed to save profile.');
     }
 };
+
+
+
 
 // Get CV Profile 
 module.exports.getCVProfile = async (req, res) => {
@@ -210,7 +320,7 @@ module.exports.getCVProfile = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(`
                 SELECT Name AS name, Age AS age, Email_Address AS email, Mobile_Number AS phone, 
-                    Address AS address, Description AS description, Photo AS profile_image_path 
+                    Address AS address, Description AS description, Photo AS profile_image_path, PerID
                 FROM Profile 
                 WHERE AccountID = @accountID`);
 
@@ -218,8 +328,8 @@ module.exports.getCVProfile = async (req, res) => {
         if (result.recordset.length === 0) {
             return res.status(404).send('No profile data found');
         }
-
         const profile = result.recordset[0];
+        console.log("Found PerID: " + profile.PerID);
 
         // Check if profile_image_path exists and convert it to base64 if it does
         if (profile.profile_image_path) {
@@ -277,20 +387,27 @@ module.exports.getPersonDetails = async (req, res) => {
 //Save CV Education
 module.exports.saveCVEducation = async (req, res) => {
     const { accountID, newEducationEntries, existingEducationEntries } = req.body;
+    console.log("newEducationEntries: " + newEducationEntries);
+    console.log("existingEducationEntries123: " + existingEducationEntries);
+
+    let newEducationsWithID = []; // Array to store newly inserted education entries with their EduBacID
 
     try {
         const pool = await poolPromise;
-        let newEducationsWithID = []; // Array to store newly inserted education entries with their EduBacID
 
         // Process existing entries (updates)
         if (existingEducationEntries && existingEducationEntries.length > 0) {
+            console.log("Exist");
             for (let entry of existingEducationEntries) {
+                console.log("existingEducationEntries: " + existingEducationEntries);
+
                 const {
-                    eduBacID, level, field_of_study, institute_name, institute_country, institute_city, institute_state, start_date, end_date, isPublic
+                    EduBacID, level, field_of_study, institute_name, institute_country, institute_city, institute_state, start_date, end_date, isPublic
                 } = entry;
+                console.log("level: " + level);
 
                 await pool.request()
-                    .input('EduBacID', sql.Int, eduBacID)
+                    .input('EduBacID', sql.Int, EduBacID)
                     .input('LevelEdu', sql.NVarChar, level)
                     .input('FieldOfStudy', sql.NVarChar, field_of_study)
                     .input('InstituteName', sql.NVarChar, institute_name)
@@ -310,10 +427,10 @@ module.exports.saveCVEducation = async (req, res) => {
                     `);
             }
         }
-
         // Process new entries (inserts)
         if (newEducationEntries && newEducationEntries.length > 0) {
             for (let entry of newEducationEntries) {
+                console.log("New");
                 const {
                     level, field_of_study, institute_name, institute_country, institute_city, institute_state, start_date, end_date, isPublic
                 } = entry;
@@ -340,23 +457,57 @@ module.exports.saveCVEducation = async (req, res) => {
 
                 // Add the inserted EduBacID to the array
                 if (result.recordset && result.recordset.length > 0) {
+                    console.log(result.recordset[0].EduBacID);
+                    const insertedEntry = result.recordset[0];
                     newEducationsWithID.push({
-                        EduBacID: result.recordset[0].EduBacID,
-                        level,
-                        field_of_study,
-                        institute_name
+                        EduBacID: insertedEntry.EduBacID,                          // No change
+                        accountID: accountID,                        // Changed 'AccountID' to 'accountID'
+                        level: level,                             // Changed 'LevelEdu' to 'level'
+                        field_of_study: field_of_study,                // Changed 'FieldOfStudy' to 'field_of_study'
+                        institute_name: institute_name,               // Changed 'InstituteName' to 'institute_name'
+                        institute_country: institute_country,         // Changed 'InstituteCountry' to 'institute_country'
+                        institute_city: institute_city,               // Changed 'InstituteCity' to 'institute_city'
+                        institute_state: institute_state,             // Changed 'InstituteState' to 'institute_state'
+                        start_date: start_date,                    // Changed 'EduStartDate' to 'start_date'
+                        end_date: end_date,                        // Changed 'EduEndDate' to 'end_date'
+                        isPublic: isPublic                           // No change
                     });
+                    console.log(newEducationsWithID[0].EduBacID);
                 } else {
                     console.error("Insert failed, no EduBacID returned.");
                 }
+
             }
         }
 
-        // Return success response with inserted IDs
-        res.status(200).json({
-            message: 'Education entries saved successfully',
-            newEducationEntriesWithID: newEducationsWithID
-        });
+        const educationEntries = [...existingEducationEntries, ...newEducationsWithID];
+
+
+        console.log("Before Pass:2");
+        console.log("educationEntries: " + educationEntries[0].EduBacID);
+        console.log("educationEntries: " + educationEntries[0].start_date);
+
+
+        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVEducation';
+        const secondApiData = { ...req.body, educationEntries }; // Pass the inserted entries with EduBacID
+        try {
+            const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            // Log response from the second API if necessary
+            console.log('Second API response:', secondApiResponse.data);
+
+            res.status(200).json({
+                newEducationsWithID: newEducationsWithID,
+            });
+            console.log("Success");
+        } catch (secondApiError) {
+            console.error('Error calling second API:', secondApiError.message);
+            res.status(500).send('Error calling second API: ' + secondApiError.message);
+        }
     } catch (error) {
         console.error('Error saving education info:', error);
         res.status(500).send('Failed to save education info');
@@ -394,34 +545,37 @@ module.exports.getCVEducation = async (req, res) => {
     }
 };
 
-//Delete CV Education 
 module.exports.deleteCVEducation = async (req, res) => {
-    const { eduBacID } = req.body;
+    const { EduBacID } = req.body;
+
+    if (!EduBacID) {
+        return res.status(400).json({ message: 'EduBacID is required' });
+    }
 
     try {
         const pool = await poolPromise;
 
-        // Check if the education entry exists
-        const existingEducation = await pool.request()
-            .input('EduBacID', sql.Int, eduBacID)
-            .query('SELECT COUNT(*) AS count FROM Education WHERE EduBacID = @EduBacID');
+        // Directly delete the education entry based on the RefID (EduBacID)
+        const deleteResult = await pool.request()
+            .input('EduBacID', sql.Int, EduBacID)
+            .query(`
+                DELETE FROM Education
+                WHERE EduBacID = @EduBacID
+            `);
 
-        if (existingEducation.recordset[0].count > 0) {
-            // Delete the education entry
-            await pool.request()
-                .input('EduBacID', sql.Int, eduBacID)
-                .query('DELETE FROM Education WHERE EduBacID = @EduBacID');
-
-            res.status(200).json({ message: 'Education entry deleted successfully' });
+        // Check if any rows were affected (i.e., entry was deleted)
+        if (deleteResult.rowsAffected[0] > 0) {
+            // Return 200 status code for successful deletion
+            return res.status(200).json({ message: 'Education entry deleted successfully' });
         } else {
-            res.status(404).json({ message: 'Education entry not found' });
+            // Return 201 status code if no matching entry was found
+            return res.status(201).json({ message: 'Education entry not found' });
         }
     } catch (error) {
         console.error('Error deleting education entry:', error.message);
-        res.status(500).json({ message: 'Error deleting education entry' });
+        return res.status(500).json({ message: 'Error deleting education entry' });
     }
 };
-
 
 // CV Work
 // Save CV Work
@@ -577,10 +731,10 @@ module.exports.deleteCVWork = async (req, res) => {
     }
 };
 
-
 module.exports.saveCVCertification = async (req, res) => {
     const { accountID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate } = req.body;
-    IsPublic = 1;
+    const IsPublic = 1;
+
     // Validate input
     if (!accountID) {
         return res.status(400).send('Account ID is required');
@@ -608,23 +762,53 @@ module.exports.saveCVCertification = async (req, res) => {
                 VALUES (@AccountID, @CerName, @CerEmail, @CerType, @CerIssuer, @CerDescription, @CerAcquiredDate, @IsPublic)
             `);
 
-        // Return the new CerID along with a success message
-        res.status(200).json({
-            message: 'Certification saved successfully',
-            CerID: result.recordset[0].CerID,
+        const CerID = result.recordset[0].CerID;
+
+        // Call the second function and pass the necessary data
+        const secondApiUrl = 'http://localhost:3010/api/saveCVCertification'; // Update with the actual URL if needed
+        const secondApiData = {
+            accountID,  // Account ID to be used as StudentAccID in the second function
+            CerID,      // CerID from the first function passed as RefID in the second function
             CerName,
             CerEmail,
             CerType,
             CerIssuer,
             CerDescription,
-            CerAcquiredDate,
-            IsPublic
+            CerAcquiredDate
+        };
+
+        const axios = require('axios'); // Assuming you're using Axios for the HTTP call
+
+        const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
         });
+
+        if (secondApiResponse.status === 200) {
+            res.status(200).json({
+                message: 'Certification saved successfully in both databases',
+                CerID,
+                CerName,
+                CerEmail,
+                CerType,
+                CerIssuer,
+                CerDescription,
+                CerAcquiredDate,
+                IsPublic,
+                secondApiResponse: secondApiResponse.data
+            });
+        } else if(secondApiResponse.status === 501){
+            res.status(501).json({ message: 'Error saving certification in the second database' });
+
+        }
+
     } catch (error) {
         console.error('Error saving certification:', error.message);
         res.status(500).send('Server error');
     }
 };
+
 
 module.exports.getCVCertifications = async (req, res) => {
     const { accountID } = req.body;

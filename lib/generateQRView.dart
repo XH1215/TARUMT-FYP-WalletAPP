@@ -153,9 +153,7 @@ class _GenerateQRViewState extends State<GenerateQRView> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.pop(
-                    context, 'qr_generated'); // Pop to qrView with result
+                Navigator.pop(context, 'qr_generated');
               },
               child: const Text('Close'),
             ),

@@ -31,7 +31,6 @@ class EducationInfoPage extends StatefulWidget {
 }
 
 class _EducationInfoPageState extends State<EducationInfoPage> {
-  bool _isDisposed = false;
   final List<String> _educationLevels = [
     'HIGH SCHOOL',
     'FOUNDATION',
@@ -43,17 +42,18 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     'OTHER',
   ];
 
-  List<Map<String, dynamic>> _educationEntries = [];
-  List<String?> _selectedLevels = [];
-  List<TextEditingController> _fieldOfStudyControllers = [];
-  List<TextEditingController> _instituteNameControllers = [];
-  List<TextEditingController> _instituteCountryControllers = [];
-  List<TextEditingController> _instituteStateControllers = [];
-  List<TextEditingController> _instituteCityControllers = [];
-  List<String> _startDateList = [];
-  List<String> _endDateList = [];
-  List<bool> _isPublicList = [];
+  final List<Map<String, dynamic>> _educationEntries = [];
+  final List<String?> _selectedLevels = [];
+  final List<TextEditingController> _fieldOfStudyControllers = [];
+  final List<TextEditingController> _instituteNameControllers = [];
+  final List<TextEditingController> _instituteCountryControllers = [];
+  final List<TextEditingController> _instituteStateControllers = [];
+  final List<TextEditingController> _instituteCityControllers = [];
+  final List<String> _startDateList = [];
+  final List<String> _endDateList = [];
+  final List<bool> _isPublicList = [];
   bool _isEditing = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -75,8 +75,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _endDateList.clear();
       _isPublicList.clear();
 
-      // Initialize with only one education entry
-      _addEducationEntry(); // Only call this once here to ensure one set of fields
+      _addEducationEntry(); // Initialize with one education entry
     });
   }
 
@@ -85,12 +84,16 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getInt('accountID');
     } catch (e) {
-      print('Error retrieving accountID: $e');
+      devtools.log('Error retrieving accountID: $e');
       return null;
     }
   }
 
   Future<void> _fetchEducationData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final accountID = await _getAccountID();
     if (accountID == null) return;
 
@@ -116,36 +119,35 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             _endDateList.clear();
             _isPublicList.clear();
 
-            if (data.isNotEmpty) {
-              for (var entry in data) {
-                _educationEntries.add(entry);
-                _isPublicList.add(entry['isPublic'] ?? true);
-                _selectedLevels.add(entry['level']);
-                _fieldOfStudyControllers
-                    .add(TextEditingController(text: entry['field_of_study']));
-                _instituteNameControllers
-                    .add(TextEditingController(text: entry['institute_name']));
-                _instituteCountryControllers.add(
-                    TextEditingController(text: entry['institute_country']));
-                _instituteStateControllers
-                    .add(TextEditingController(text: entry['institute_state']));
-                _instituteCityControllers
-                    .add(TextEditingController(text: entry['institute_city']));
-                _startDateList.add(entry['start_date'] ?? '');
-                _endDateList.add(entry['end_date'] ?? '');
-              }
+            for (var entry in data) {
+              _educationEntries.add(entry);
+              _isPublicList.add(entry['isPublic'] ?? true);
+              _selectedLevels.add(entry['level']);
+              _fieldOfStudyControllers
+                  .add(TextEditingController(text: entry['field_of_study']));
+              _instituteNameControllers
+                  .add(TextEditingController(text: entry['institute_name']));
+              _instituteCountryControllers
+                  .add(TextEditingController(text: entry['institute_country']));
+              _instituteStateControllers
+                  .add(TextEditingController(text: entry['institute_state']));
+              _instituteCityControllers
+                  .add(TextEditingController(text: entry['institute_city']));
+              _startDateList.add(entry['start_date'] ?? '');
+              _endDateList.add(entry['end_date'] ?? '');
             }
-            // Do not call _addEducationEntry() here
           });
         }
       } else {
-        print(
+        devtools.log(
             'Failed to fetch education data. Status code: ${response.statusCode}');
-        // No need to call _addEducationEntry() here since it's already initialized in _initializeEducationEntries
       }
     } catch (e) {
-      print('Error fetching education data: $e');
-      // No need to call _addEducationEntry() here
+      devtools.log('Error fetching education data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -178,24 +180,19 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   Future<void> _saveEducationEntries() async {
     final accountID = await _getAccountID();
     if (accountID == null) return;
-
+    if (!mounted) return;
     List<Map<String, dynamic>> newEducationEntries = [];
     List<Map<String, dynamic>> existingEducationEntries = [];
-    List<int> newEntryIndexes = []; // Keep track of new entries' indexes
-
-    bool hasError = false; // Track whether there's any validation error
-    Set<String> entrySet = {}; // Set to track unique education entries
+    List<int> newEntryIndexes = [];
+    bool hasError = false;
+    Set<String> entrySet = {};
 
     for (int i = 0; i < _educationEntries.length; i++) {
-      // Convert inputs to uppercase for consistency
       String level = _selectedLevels[i]?.toUpperCase() ?? '';
       String fieldOfStudy = _fieldOfStudyControllers[i].text.toUpperCase();
       String instituteName = _instituteNameControllers[i].text.toUpperCase();
-
-      // Construct a unique key to detect duplicates
       String uniqueKey = '$level-$fieldOfStudy-$instituteName';
 
-      // Check for empty fields and show an error dialog
       if (level.isEmpty ||
           fieldOfStudy.isEmpty ||
           instituteName.isEmpty ||
@@ -205,37 +202,26 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
           _startDateList[i].isEmpty ||
           _endDateList[i].isEmpty) {
         hasError = true;
-
-        // Show an error message
         showErrorDialog(
           context,
           'Please fill in all the fields for education entry ${i + 1}.',
         );
-
-        // Don't proceed further, but also don't toggle the editing state
         break;
       }
 
-      // Check for duplicates
       if (entrySet.contains(uniqueKey)) {
         hasError = true;
-
-        // Show an error message for duplicates
         showErrorDialog(
           context,
           'Duplicate entry for education entry ${i + 1}. Please modify or remove it.',
         );
-
-        // Don't proceed further, but also don't toggle the editing state
         break;
       }
 
-      // Add the unique key to the set to track this entry
       entrySet.add(uniqueKey);
 
-      // Prepare entry for saving
       final entry = {
-        'eduBacID': _educationEntries[i]['eduBacID'],
+        'EduBacID': _educationEntries[i]['eduBacID'],
         'level': level,
         'field_of_study': fieldOfStudy,
         'institute_name': instituteName,
@@ -249,16 +235,17 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
 
       if (_educationEntries[i]['eduBacID'] == null) {
         newEducationEntries.add(entry);
-        newEntryIndexes.add(i); // Track the index of new entries
+        newEntryIndexes.add(i);
       } else {
         existingEducationEntries.add(entry);
       }
     }
 
-    // Exit early if there was an error
-    if (hasError) {
-      return;
-    }
+    if (hasError) return;
+
+    setState(() {
+      _isLoading = true;
+    });
 
     final body = jsonEncode({
       'accountID': accountID,
@@ -272,26 +259,21 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
-      final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3010/api/saveCVEducation'),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      if (response.statusCode == 200 && response2.statusCode == 200) {
+      devtools.log(response.statusCode.toString());
+      if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        List updatedEducations = responseData['newEducationEntriesWithID'];
+        List updatedEducations = responseData['newEducationsWithID'];
 
         for (int i = 0; i < newEntryIndexes.length; i++) {
-          int index = newEntryIndexes[i]; // Get the index of the new entry
+          int index = newEntryIndexes[i];
           _educationEntries[index]['eduBacID'] =
-              updatedEducations[i]['EduBacID']; // Update with correct EduBacID
+              updatedEducations[i]['EduBacID'];
           devtools.log("Added EduBacID to new entry at index: $index");
         }
 
         devtools.log('Education entries saved successfully.');
         setState(() {
-          _isEditing = false; // Only turn off editing mode if successful
+          _isEditing = false;
         });
       } else {
         devtools.log(
@@ -301,34 +283,31 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     } catch (error) {
       devtools.log('Error saving education entries: $error');
       showErrorDialog(context, 'Error saving education entries');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   void _deleteEducationEntry(int index) async {
     final eduBacID = _educationEntries[index]['eduBacID'];
-    final level = _educationEntries[index]['level'];
-    final field_of_study = _educationEntries[index]['field_of_study'];
-    final institute_name = _educationEntries[index]['institute_name'];
 
     if (eduBacID != null) {
       try {
         final response = await http.post(
           Uri.parse('http://192.168.1.9:3000/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'eduBacID': eduBacID}),
+          body: jsonEncode({'EduBacID': eduBacID}),
         );
         final response2 = await http.post(
           Uri.parse('http://192.168.1.9:3010/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'level': level,
-            'field_of_study': field_of_study,
-            'institute_name': institute_name,
-          }),
+          body: jsonEncode({'EduBacID': eduBacID}),
         );
 
         if (response.statusCode == 200 && response2.statusCode == 200 ||
-            response2.statusCode == 404) {
+            response2.statusCode == 201) {
           setState(() {
             _educationEntries.removeAt(index);
             _selectedLevels.removeAt(index);
@@ -375,10 +354,28 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
 
   void _toggleEditMode() async {
     if (_isEditing) {
-      await _saveEducationEntries(); // Save entries first
+      setState(() {
+        _isLoading = true; // Start loading indicator when saving
+      });
+
+      try {
+        // Perform save operation here
+        await _saveEducationEntries();
+
+        setState(() {
+          _isEditing = false; // End edit mode after saving
+        });
+      } catch (error) {
+        // Handle any errors during save
+        devtools.log('Error saving data: $error');
+      } finally {
+        setState(() {
+          _isLoading = false; // Stop loading indicator after save completes
+        });
+      }
     } else {
       setState(() {
-        _isEditing = true; // Turn on editing mode when "Edit" is clicked
+        _isEditing = true; // Start edit mode
       });
     }
   }
@@ -399,14 +396,14 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       lastDate: DateTime(2101),
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         String formattedDate =
             '${picked.year}-${picked.month.toString().padLeft(2, '0')}';
         if (isStart) {
-          _startDateList[index] = formattedDate; // Save as year-month
+          _startDateList[index] = formattedDate;
         } else {
-          _endDateList[index] = formattedDate; // Save as year-month
+          _endDateList[index] = formattedDate;
         }
       });
     }
@@ -451,43 +448,42 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Level of Education',
             _educationLevels,
             index,
-            _isEditing &&
-                !isExistingEntry, // Pass the flag to disable if entry exists
+            _isEditing, // Disable if entry exists
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Field of Study',
             _fieldOfStudyControllers[index],
-            _isEditing && !isExistingEntry, // Disable if it's an existing entry
+            _isEditing, // Disable if entry exists
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Institute Name',
             _instituteNameControllers[index],
-            _isEditing && !isExistingEntry, // Disable if it's an existing entry
+            _isEditing, // Disable if entry exists
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Institute Country',
             _instituteCountryControllers[index],
-            _isEditing, // This field can always be edited
+            _isEditing,
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Institute State',
             _instituteStateControllers[index],
-            _isEditing, // This field can always be edited
+            _isEditing,
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Institute City',
             _instituteCityControllers[index],
-            _isEditing, // This field can always be edited
+            _isEditing,
           ),
           const SizedBox(height: 15.0),
           Row(
@@ -510,7 +506,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                           ? _selectMonthYear(context, index, true)
                           : null,
                       child: Container(
-                        width: 150.0, // Set fixed width for Start Date input
+                        width: 150.0,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 15.0, vertical: 15.0),
                         decoration: BoxDecoration(
@@ -518,8 +514,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                           borderRadius: BorderRadius.circular(10.0),
                         ),
                         child: Text(
-                          _startDateList[
-                              index], // Display the selected start date
+                          _startDateList[index],
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -551,7 +546,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                           ? _selectMonthYear(context, index, false)
                           : null,
                       child: Container(
-                        width: 150.0, // Set fixed width for End Date input
+                        width: 150.0,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 15.0, vertical: 15.0),
                         decoration: BoxDecoration(
@@ -559,7 +554,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                           borderRadius: BorderRadius.circular(10.0),
                         ),
                         child: Text(
-                          _endDateList[index], // Display the selected end date
+                          _endDateList[index],
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -609,7 +604,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                     _selectedLevels[index] = newValue;
                   });
                 }
-              : null, // Disable the dropdown if it's not editable
+              : null, // Disable if not editable
           items: items.map<DropdownMenuItem<String>>((String value) {
             return DropdownMenuItem<String>(
               value: value,
@@ -622,14 +617,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
             enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(
-                  color: isEditable
-                      ? Colors.grey
-                      : Colors.black12), // Visual cue for non-editable
+              borderSide:
+                  BorderSide(color: isEditable ? Colors.grey : Colors.black12),
               borderRadius: BorderRadius.circular(10.0),
             ),
           ),
-          isExpanded: true, // Ensure the dropdown fills the available width
+          isExpanded: true,
         ),
       ],
     );
@@ -655,9 +648,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
               borderSide: BorderSide(
-                color: isError
-                    ? Colors.red
-                    : Colors.grey, // Red border if there's an error
+                color: isError ? Colors.red : Colors.grey,
                 width: 2.0,
               ),
             ),
@@ -679,58 +670,70 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         ),
         centerTitle: true,
         elevation: 0,
-        title: Text('Education Information',
-            style: AppWidget.headlineTextFieldStyle()),
-      ),
-      body: Container(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(15.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _educationEntries.length,
-                itemBuilder: (context, index) {
-                  return _buildInputSection(context, index);
-                },
-              ),
-              const SizedBox(height: 10.0),
-              if (_isEditing)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _addEducationEntry();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF171B63),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40.0, vertical: 15.0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                    ),
-                    child: const Text('Add More Education',
-                        style: TextStyle(color: Colors.white, fontSize: 16.0)),
-                  ),
-                ),
-              const SizedBox(height: 20.0),
-            ],
-          ),
+        title: Text(
+          'Education Information',
+          style: AppWidget.headlineTextFieldStyle(),
         ),
       ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(15.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _educationEntries.length,
+                    itemBuilder: (context, index) {
+                      return _buildInputSection(context, index);
+                    },
+                  ),
+                  const SizedBox(height: 10.0),
+                  if (_isEditing)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        onPressed: _isLoading
+                            ? null // Disable button when loading
+                            : () {
+                                setState(() {
+                                  _addEducationEntry();
+                                });
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF171B63),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40.0, vertical: 15.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                        ),
+                        child: const Text(
+                          'Add More Education',
+                          style: TextStyle(color: Colors.white, fontSize: 16.0),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 20.0),
+                ],
+              ),
+            ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             ElevatedButton(
-              onPressed: _toggleEditMode,
+              onPressed: _isLoading
+                  ? null // Disable button when loading
+                  : _toggleEditMode,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF171B63),
+                backgroundColor: _isLoading
+                    ? Colors.grey
+                    : const Color(0xFF171B63), // Change button color if loading
                 padding: const EdgeInsets.symmetric(
                     horizontal: 60.0, vertical: 15.0),
                 shape: RoundedRectangleBorder(

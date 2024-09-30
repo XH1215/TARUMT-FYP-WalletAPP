@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:firstly/show_error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -25,6 +26,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
   late TextEditingController _descriptionController;
+  late int PerID;
   bool _isEditing = false; // Track whether the user is editing
   bool _isSaving = false; // Track whether the profile is being saved
   Map<String, String?> _errorMessages = {}; // Store error messages
@@ -87,8 +89,8 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
             _phoneController.text = data['phone'] ?? '';
             _addressController.text = data['address'] ?? '';
             _descriptionController.text = data['description'] ?? '';
+            PerID = data['PerID'] ?? '';
           });
-
           // Load profile image if available
           if (data['Photo'] != null && data['Photo'].isNotEmpty) {
             try {
@@ -161,6 +163,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                   title: const Text('Gallery'),
                   onTap: () async {
                     final picker = ImagePicker();
+                    Navigator.of(context).pop();
                     final pickedFile = await picker.pickImage(
                       source: ImageSource.gallery,
                       imageQuality: 80,
@@ -170,7 +173,6 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                         _imageFile = pickedFile;
                       }
                     });
-                    Navigator.of(context).pop();
                   },
                 ),
                 ListTile(
@@ -178,16 +180,17 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                   title: const Text('Camera'),
                   onTap: () async {
                     final picker = ImagePicker();
+                    Navigator.of(context).pop();
                     final pickedFile = await picker.pickImage(
                       source: ImageSource.camera,
                       imageQuality: 80,
                     );
+
                     setState(() {
                       if (pickedFile != null) {
                         _imageFile = pickedFile;
                       }
                     });
-                    Navigator.of(context).pop();
                   },
                 ),
               ],
@@ -241,7 +244,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
           // Compress the resized image
           compressedImageBytes = img.encodeJpg(resizedImage, quality: quality);
           devtools.log(
-              'Initial compressed image size: ${compressedImageBytes!.length} bytes');
+              'Initial compressed image size: ${compressedImageBytes.length} bytes');
 
           // If the initial compression is still larger than 2MB, reduce quality
           if (compressedImageBytes.length > targetSizeBytes) {
@@ -276,6 +279,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       'mobile_number': _phoneController.text.trim().toUpperCase(),
       'address': _addressController.text.trim().toUpperCase(),
       'description': _descriptionController.text.trim().toUpperCase(),
+      'PerID': PerID,
     };
 
     devtools.log('Saving profile data for accountID: $accountID');
@@ -285,15 +289,35 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     });
 
     try {
+      // final response = await http.post(
+      //   Uri.parse('http://192.168.1.9:3000/api/saveCVProfile'),
+      //   headers: <String, String>{
+      //     'Content-Type': 'application/json; charset=UTF-8',
+      //   },
+      //   body: jsonEncode(profileData),
+      // );
+      // final response2 = await http.post(
+      //   Uri.parse('http://192.168.1.9:3010/api/saveCVProfile'),
+      //   headers: <String, String>{
+      //     'Content-Type': 'application/json; charset=UTF-8',
+      //   },
+      //   body: jsonEncode(profileData),
+      // );
+
+      // devtools.log('Response 1 status: ${response.statusCode}');
+      // devtools.log('Response 1 body: ${response.body}');
+      // devtools.log('Response 2 status: ${response2.statusCode}');
+      // devtools.log('Response 2 body: ${response2.body}');
+      // if (response.statusCode == 200 || response2.statusCode == 200) {
+      //   devtools.log('Profile saved successfully');
+      //   _showSuccessDialog();
+      // } else {
+      //   devtools.log('Failed to save profile: ${response.statusCode}');
+      //   _showErrorDialog('Failed to save profile.');
+      // }
+
       final response = await http.post(
         Uri.parse('http://192.168.1.9:3000/api/saveCVProfile'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(profileData),
-      );
-      final response2 = await http.post(
-        Uri.parse('http://192.168.1.9:3010/api/saveCVProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -302,18 +326,27 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
       devtools.log('Response 1 status: ${response.statusCode}');
       devtools.log('Response 1 body: ${response.body}');
-      devtools.log('Response 2 status: ${response2.statusCode}');
-      devtools.log('Response 2 body: ${response2.body}');
-      if (response.statusCode == 200 || response2.statusCode == 200) {
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
         devtools.log('Profile saved successfully');
-        _showSuccessDialog();
+        showErrorDialog(context, 'Profile saved successfully');
+      } else if (response.statusCode == 501) {
+        devtools.log('Profile saved successfully');
+        showErrorDialog(context, response.body);
+      } else if (response.statusCode == 502) {
+        devtools.log('Profile saved successfully');
+        showErrorDialog(context, response.body);
       } else {
         devtools.log('Failed to save profile: ${response.statusCode}');
-        _showErrorDialog('Failed to save profile.');
+        showErrorDialog(context, response.body);
       }
     } catch (e) {
+      if (!mounted) return;
+
       devtools.log('Error saving profile data: $e');
-      _showErrorDialog('An error occurred while saving the profile.');
+      showErrorDialog(context, 'An error occurred while saving the profile.');
     } finally {
       if (mounted) {
         // Check if the widget is still mounted
@@ -467,42 +500,6 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
           const SizedBox(height: 15.0),
         ],
       ),
-    );
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Success'),
-          content: const Text('Profile saved successfully.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Error'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
     );
   }
 

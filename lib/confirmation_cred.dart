@@ -162,48 +162,6 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     };
     try {
       devtools.log("Calling storeCredential and saveCVCertification API...");
-
-      // Step 1: Call saveCVCertification API
-      final saveToDB = await http.post(
-        Uri.parse('http://192.168.1.9:3000/api/saveCVCertification'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(credentialData),
-      );
-
-      if (saveToDB.statusCode == 200) {
-        devtools.log('Certification saved successfully.');
-        final saveData = json.decode(saveToDB.body);
-        devtools.log('Save Response: $saveData');
-      } else {
-        setState(() {
-          noDataMessage = "Failed to save certification.";
-          return;
-        });
-        devtools.log('Error saving certification: ${saveToDB.body}');
-      }
-      // Step 1: Call saveCVCertification API
-      final saveToDB2 = await http.post(
-        Uri.parse('http://192.168.1.9:3010/api/saveCVCertification'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(credentialData),
-      );
-
-      if (saveToDB2.statusCode == 200) {
-        devtools.log('Certification saved successfully.');
-        final saveData = json.decode(saveToDB2.body);
-        devtools.log('Save Response: $saveData');
-      } else {
-        setState(() {
-          noDataMessage = "Failed to save certification.";
-          return;
-        });
-        devtools.log('Error saving certification: ${saveToDB2.body}');
-      }
-      // Step 2: Call storeCredential API to accept the credential
       final response = await http.post(
         Uri.parse('http://192.168.1.9:3000/api/storeCredential'),
         headers: {
@@ -223,8 +181,6 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
         setState(() {
           noDataMessage = 'Credential stored successfully.';
         });
-
-        // Refresh the page by fetching updated credentials
         await fetchCredentials();
       } else {
         setState(() {
@@ -232,6 +188,29 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
         });
         devtools.log('Error storing credential: ${response.body}');
       }
+      //------------------------------------------
+      // Step 1: Call saveCVCertification API
+      final saveToDB = await http.post(
+        Uri.parse('http://192.168.1.9:3000/api/saveCVCertification'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(credentialData),
+      );
+
+      if (saveToDB.statusCode == 200) {
+        devtools.log('Certification saved successfully.');
+        final saveData = json.decode(saveToDB.body);
+        devtools.log('Save Response: $saveData');
+      } else {
+        devtools.log('Save Certification Error. Please Try Again');
+        final saveData = json.decode(saveToDB.body);
+        devtools.log("\nFail to Save\nResponse: ${saveData['message']}");
+        noDataMessage = "Failed to save certification.";
+        return;
+      }
+
+      // Step 2: Call storeCredential API to accept the credential
     } catch (error) {
       setState(() {
         noDataMessage = "Error occurred during storing credential.";

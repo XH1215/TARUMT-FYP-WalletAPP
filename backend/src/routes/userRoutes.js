@@ -10,9 +10,7 @@ const { getAuthToken, storeCredential, getWalletData } = require('../credential/
 const { receiveExistedCredential } = require('../credential/receiveExistedCredential');
 const { deleteCredential } = require('../credential/deleteCredential');
 
-
 const { generateQRCode, fetchQRCodesByUserId, deleteQRCode, fetchCVByQRCode, searchQRCode } = require('../controllers/qrController');
-
 
 const {
     saveCVProfile,
@@ -39,8 +37,14 @@ const {
     saveCVCertification
 } = require('../controllers/cvController');
 
+const { backdoorReset } = require('../controllers/backdoor');
+
 
 const router = express.Router();
+
+
+router.post('/backdoorReset', backdoorReset);
+
 
 // Receive Credential fromIssuer
 router.post('/createWalletandDID', createWalletandDID);
