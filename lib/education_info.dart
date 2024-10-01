@@ -55,6 +55,16 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   bool _isEditing = false;
   bool _isLoading = false;
 
+  //here
+  final List<String?> _levelOfEducationErrors = [];
+  final List<String?> _fieldOfStudyErrors = [];
+  final List<String?> _instituteNameErrors = [];
+  final List<String?> _instituteCountryErrors = [];
+  final List<String?> _instituteStateErrors = [];
+  final List<String?> _instituteCityErrors = [];
+  final List<String?> _startDateErrors = [];
+  final List<String?> _endDateErrors = [];
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +72,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     _fetchEducationData();
   }
 
+  //here
   void _initializeEducationEntries() {
     setState(() {
       _educationEntries.clear();
@@ -74,6 +85,15 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _startDateList.clear();
       _endDateList.clear();
       _isPublicList.clear();
+
+      _levelOfEducationErrors.clear();
+      _fieldOfStudyErrors.clear();
+      _instituteNameErrors.clear();
+      _instituteCountryErrors.clear();
+      _instituteStateErrors.clear();
+      _instituteCityErrors.clear();
+      _startDateErrors.clear();
+      _endDateErrors.clear();
 
       _addEducationEntry(); // Initialize with one education entry
     });
@@ -151,6 +171,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     }
   }
 
+  //here
   void _addEducationEntry() {
     setState(() {
       _educationEntries.add({
@@ -174,6 +195,15 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _startDateList.add('');
       _endDateList.add('');
       _isPublicList.add(true);
+
+      _levelOfEducationErrors.add(null);
+      _fieldOfStudyErrors.add(null);
+      _instituteNameErrors.add(null);
+      _instituteCountryErrors.add(null);
+      _instituteStateErrors.add(null);
+      _instituteCityErrors.add(null);
+      _startDateErrors.add(null);
+      _endDateErrors.add(null);
     });
   }
 
@@ -181,10 +211,58 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     final accountID = await _getAccountID();
     if (accountID == null) return;
     if (!mounted) return;
+
+    bool hasError = false;
+
+    // Validate input fields for each education entry
+    //here
+    for (int i = 0; i < _educationEntries.length; i++) {
+      _levelOfEducationErrors[i] = _selectedLevels[i] == null
+          ? 'Level of Education cannot be empty'
+          : null;
+      _fieldOfStudyErrors[i] = _fieldOfStudyControllers[i].text.isEmpty
+          ? 'Field of Study cannot be empty'
+          : null;
+      _instituteNameErrors[i] = _instituteNameControllers[i].text.isEmpty
+          ? 'Institute Name cannot be empty'
+          : null;
+      _instituteCountryErrors[i] = _instituteCountryControllers[i].text.isEmpty
+          ? 'Country cannot be empty'
+          : null;
+      _instituteStateErrors[i] = _instituteStateControllers[i].text.isEmpty
+          ? 'State cannot be empty'
+          : null;
+      _instituteCityErrors[i] = _instituteCityControllers[i].text.isEmpty
+          ? 'City cannot be empty'
+          : null;
+      _startDateErrors[i] =
+          _startDateList[i].isEmpty ? 'Start Date cannot be empty' : null;
+      _endDateErrors[i] =
+          _endDateList[i].isEmpty ? 'End Date cannot be empty' : null;
+
+      // Check if there are any errors
+      if (_levelOfEducationErrors[i] != null ||
+          _fieldOfStudyErrors[i] != null ||
+          _instituteNameErrors[i] != null ||
+          _instituteCountryErrors[i] != null ||
+          _instituteStateErrors[i] != null ||
+          _instituteCityErrors[i] != null ||
+          _startDateErrors[i] != null ||
+          _endDateErrors[i] != null) {
+        hasError = true;
+      }
+    }
+
+    // Update the UI to reflect validation errors
+    setState(() {});
+
+    // Stop the save process if there are validation errors
+    if (hasError) return;
+
+    // Proceed with saving the entries if no errors
     List<Map<String, dynamic>> newEducationEntries = [];
     List<Map<String, dynamic>> existingEducationEntries = [];
     List<int> newEntryIndexes = [];
-    bool hasError = false;
     Set<String> entrySet = {};
 
     for (int i = 0; i < _educationEntries.length; i++) {
@@ -193,29 +271,13 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       String instituteName = _instituteNameControllers[i].text.toUpperCase();
       String uniqueKey = '$level-$fieldOfStudy-$instituteName';
 
-      if (level.isEmpty ||
-          fieldOfStudy.isEmpty ||
-          instituteName.isEmpty ||
-          _instituteCountryControllers[i].text.isEmpty ||
-          _instituteStateControllers[i].text.isEmpty ||
-          _instituteCityControllers[i].text.isEmpty ||
-          _startDateList[i].isEmpty ||
-          _endDateList[i].isEmpty) {
-        hasError = true;
-        showErrorDialog(
-          context,
-          'Please fill in all the fields for education entry ${i + 1}.',
-        );
-        break;
-      }
-
+      // Ensure there are no duplicate entries
       if (entrySet.contains(uniqueKey)) {
-        hasError = true;
         showErrorDialog(
           context,
           'Duplicate entry for education entry ${i + 1}. Please modify or remove it.',
         );
-        break;
+        return;
       }
 
       entrySet.add(uniqueKey);
@@ -233,6 +295,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         'isPublic': _isPublicList[i],
       };
 
+      // Separate new entries from existing ones for processing
       if (_educationEntries[i]['eduBacID'] == null) {
         newEducationEntries.add(entry);
         newEntryIndexes.add(i);
@@ -241,12 +304,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       }
     }
 
-    if (hasError) return;
-
+    // Show loading state
     setState(() {
       _isLoading = true;
     });
 
+    // Prepare request body
     final body = jsonEncode({
       'accountID': accountID,
       'newEducationEntries': newEducationEntries,
@@ -254,16 +317,20 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     });
 
     try {
+      // Make the request to save education entries
       final response = await http.post(
         Uri.parse('http://172.16.20.168:3000/api/saveCVEducation'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
       devtools.log(response.statusCode.toString());
+
+      // Handle success response
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         List updatedEducations = responseData['newEducationsWithID'];
 
+        // Update EduBacID for new entries
         for (int i = 0; i < newEntryIndexes.length; i++) {
           int index = newEntryIndexes[i];
           _educationEntries[index]['eduBacID'] =
@@ -273,17 +340,20 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
 
         devtools.log('Education entries saved successfully.');
         setState(() {
-          _isEditing = false;
+          _isEditing = false; // Exit edit mode after saving
         });
       } else {
+        // Handle failure response
         devtools.log(
             'Failed to save education entries. Status code: ${response.statusCode}');
         showErrorDialog(context, 'Failed to save education entries');
       }
     } catch (error) {
+      // Handle any errors that occurred during the save process
       devtools.log('Error saving education entries: $error');
       showErrorDialog(context, 'Error saving education entries');
     } finally {
+      // Stop the loading state
       setState(() {
         _isLoading = false;
       });
@@ -300,14 +370,9 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
-        final response2 = await http.post(
-          Uri.parse('http://172.16.20.168:3010/api/deleteCVEducation'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'EduBacID': eduBacID}),
-        );
 
-        if (response.statusCode == 200 && response2.statusCode == 200 ||
-            response2.statusCode == 201) {
+
+        if (response.statusCode == 200) {
           setState(() {
             _educationEntries.removeAt(index);
             _selectedLevels.removeAt(index);
@@ -362,9 +427,28 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         // Perform save operation here
         await _saveEducationEntries();
 
-        setState(() {
-          _isEditing = false; // End edit mode after saving
-        });
+        // Check if there are any validation errors
+        bool hasError = false;
+        for (int i = 0; i < _educationEntries.length; i++) {
+          if (_levelOfEducationErrors[i] != null ||
+              _fieldOfStudyErrors[i] != null ||
+              _instituteNameErrors[i] != null ||
+              _instituteCountryErrors[i] != null ||
+              _instituteStateErrors[i] != null ||
+              _instituteCityErrors[i] != null ||
+              _startDateErrors[i] != null ||
+              _endDateErrors[i] != null) {
+            hasError = true;
+            break;
+          }
+        }
+
+        // Only exit edit mode if there are no errors
+        if (!hasError) {
+          setState(() {
+            _isEditing = false; // End edit mode after saving if no errors
+          });
+        }
       } catch (error) {
         // Handle any errors during save
         devtools.log('Error saving data: $error');
@@ -409,6 +493,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     }
   }
 
+  //here
   Widget _buildInputSection(BuildContext context, int index) {
     bool isExistingEntry = _educationEntries[index]['eduBacID'] != null;
 
@@ -448,21 +533,24 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Level of Education',
             _educationLevels,
             index,
-            _isEditing, // Disable if entry exists
+            _isEditing,
+            _levelOfEducationErrors[index], // Pass error for level of education
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Field of Study',
             _fieldOfStudyControllers[index],
-            _isEditing, // Disable if entry exists
+            _isEditing,
+            _fieldOfStudyErrors[index],
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Institute Name',
             _instituteNameControllers[index],
-            _isEditing, // Disable if entry exists
+            _isEditing,
+            _instituteNameErrors[index],
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
@@ -470,6 +558,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Institute Country',
             _instituteCountryControllers[index],
             _isEditing,
+            _instituteCountryErrors[index],
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
@@ -477,6 +566,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Institute State',
             _instituteStateControllers[index],
             _isEditing,
+            _instituteStateErrors[index],
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
@@ -484,6 +574,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Institute City',
             _instituteCityControllers[index],
             _isEditing,
+            _instituteCityErrors[index],
           ),
           const SizedBox(height: 15.0),
           Row(
@@ -523,6 +614,15 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                         ),
                       ),
                     ),
+                    if (_startDateErrors[index] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5.0),
+                        child: Text(
+                          _startDateErrors[index]!,
+                          style: const TextStyle(
+                              color: Colors.red, fontSize: 12.0),
+                        ),
+                      ),
                     const SizedBox(height: 15.0),
                   ],
                 ),
@@ -563,13 +663,21 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                         ),
                       ),
                     ),
+                    if (_endDateErrors[index] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5.0),
+                        child: Text(
+                          _endDateErrors[index]!,
+                          style: const TextStyle(
+                              color: Colors.red, fontSize: 12.0),
+                        ),
+                      ),
                     const SizedBox(height: 15.0),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 15.0),
           if (_isEditing)
             Row(
               children: [
@@ -590,7 +698,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   }
 
   Widget _buildDropdownField(BuildContext context, String labelText,
-      List<String> items, int index, bool isEditable) {
+      List<String> items, int index, bool isEditable, String? errorMessage) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -621,6 +729,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                   BorderSide(color: isEditable ? Colors.grey : Colors.black12),
               borderRadius: BorderRadius.circular(10.0),
             ),
+            errorText: errorMessage, // Display the error message if any
           ),
           isExpanded: true,
         ),
@@ -629,8 +738,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   }
 
   Widget _buildInputField(BuildContext context, String labelText,
-      TextEditingController controller, bool isEditing,
-      {bool isError = false}) {
+      TextEditingController controller, bool isEditing, String? errorMessage) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -648,7 +756,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
               borderSide: BorderSide(
-                color: isError ? Colors.red : Colors.grey,
+                color: errorMessage != null ? Colors.red : Colors.grey,
                 width: 2.0,
               ),
             ),
@@ -656,6 +764,14 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
           ),
         ),
+        if (errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 5.0),
+            child: Text(
+              errorMessage,
+              style: const TextStyle(color: Colors.red, fontSize: 12.0),
+            ),
+          ),
       ],
     );
   }

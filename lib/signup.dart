@@ -40,6 +40,8 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  // Add this line
+  bool _isLoading = false;
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -64,7 +66,6 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-
     if (password != _confirmPasswordController.text) {
       _showErrorDialog('Passwords do not match.');
       return;
@@ -80,6 +81,11 @@ class _SignUpPageState extends State<SignUpPage> {
           'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 symbol.');
       return;
     }
+
+    // Add this block
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final response = await http.post(
@@ -112,6 +118,11 @@ class _SignUpPageState extends State<SignUpPage> {
     } catch (e) {
       _showErrorDialog('An error occurred. Please try again later.');
       devtools.log('Registration error: $e');
+    } finally {
+      // Add this block
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -243,11 +254,13 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 50),
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
-                    final email = _emailController.text;
-                    final password = _passwordController.text;
-                    _register(email, password);
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          final email = _emailController.text;
+                          final password = _passwordController.text;
+                          _register(email, password);
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF171B63),
                     padding: const EdgeInsets.symmetric(
@@ -258,13 +271,22 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                   ),
-                  child: const Text(
-                    'Register',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15.0,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Register',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15.0,
+                          ),
+                        ),
                 ),
               ),
             ],

@@ -101,7 +101,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://172.16.20.168:3000/api/getCVWork?accountID=$accountID'),
+        Uri.parse(
+            'http://172.16.20.168:3000/api/getCVWork?accountID=$accountID'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -425,16 +426,9 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );
-
-        final response2 = await http.post(
-          Uri.parse('http://172.16.20.168:3010/api/deleteCVWork'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'WorkExpID': WorkExpID}),
-        );
         if (!mounted) return;
 
-        if (response.statusCode == 200 &&
-            (response2.statusCode == 200 || response2.statusCode == 201)) {
+        if (response.statusCode == 200) {
           setState(() {
             _workExperienceEntries.removeAt(index);
             _jobTitleControllers.removeAt(index);

@@ -18,6 +18,8 @@ class _LoginViewState extends State<LoginView> {
   late final TextEditingController _email;
   late final TextEditingController _password;
   bool _isPasswordVisible = false;
+  // Add this line
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -49,6 +51,11 @@ class _LoginViewState extends State<LoginView> {
       _showLoginErrorDialog('Email and password cannot be empty.');
       return;
     }
+
+    // Add this block
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       await AuthService.mssql().login(
@@ -89,6 +96,11 @@ class _LoginViewState extends State<LoginView> {
         context,
         'Authentication Error.',
       );
+    } finally {
+      // Add this block
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -176,7 +188,7 @@ class _LoginViewState extends State<LoginView> {
             const SizedBox(height: 40),
             Center(
               child: ElevatedButton(
-                onPressed: _login,
+                onPressed: _isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF171B63),
                   padding: const EdgeInsets.symmetric(
@@ -187,13 +199,22 @@ class _LoginViewState extends State<LoginView> {
                     borderRadius: BorderRadius.circular(10.0),
                   ),
                 ),
-                child: const Text(
-                  'Login',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15.0,
-                  ),
-                ),
+                child: _isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Login',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15.0,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 30),

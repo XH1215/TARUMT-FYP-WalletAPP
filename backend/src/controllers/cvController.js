@@ -139,68 +139,6 @@ module.exports.getAccountEmail = async (req, res) => {
 
 // CV MANAGEMENT
 // CV Profile
-// // Save CV Profile
-// module.exports.saveCVProfile = async (req, res) => {
-//     const {
-//         accountID, Photo, name, age, email_address, mobile_number, address, description
-//     } = req.body;
-//     console.log(Photo);
-//     console.log("Try to save Photo");
-//     try {
-//         // Fetch the connection pool
-//         const pool = await poolPromise;
-//         const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
-//         // Check if profile exists in the Profile table
-//         console.log(profilePicBuffer);
-//         const existingProfile = await pool.request()
-//             .input('AccountID', sql.Int, accountID)
-//             .query('SELECT COUNT(*) AS count FROM Profile WHERE AccountID = @AccountID');
-
-//         // Update or insert into the Profile table
-//         if (existingProfile.recordset[0].count > 0) {
-//             await pool.request()
-//                 .input('AccountID', sql.Int, accountID)
-//                 .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
-//                 .input('Name', sql.NVarChar, name)
-//                 .input('Age', sql.NVarChar, age)
-//                 .input('Email_Address', sql.NVarChar, email_address)
-//                 .input('Mobile_Number', sql.NVarChar, mobile_number)
-//                 .input('Address', sql.NVarChar, address)
-//                 .input('Description', sql.NVarChar, description)
-//                 .query(`
-//                     UPDATE Profile
-//                     SET Photo = @Photo, Name = @Name, Age = @Age, Email_Address = @Email_Address, 
-//                         Mobile_Number = @Mobile_Number, Address = @Address, Description = @Description
-//                     WHERE AccountID = @AccountID
-//                 `);
-//         } else {
-//             await pool.request()
-//                 .input('AccountID', sql.Int, accountID)
-//                 .input('Photo', sql.VarBinary(sql.MAX), profilePicBuffer)
-//                 .input('Name', sql.NVarChar, name)
-//                 .input('Age', sql.Int, age)
-//                 .input('Email_Address', sql.NVarChar, email_address)
-//                 .input('Mobile_Number', sql.NVarChar, mobile_number)
-//                 .input('Address', sql.NVarChar, address)
-//                 .input('Description', sql.NVarChar, description)
-//                 .query(`
-//                     INSERT INTO Profile (
-//                         AccountID, Photo, Name, Age, Email_Address, Mobile_Number, Address, Description
-//                     ) VALUES (
-//                         @AccountID, @Photo, @Name, @Age, @Email_Address, @Mobile_Number, @Address, @Description
-//                     )
-//                 `);
-//         }
-//         console.log("Try to save Photo successful");
-
-
-//         res.status(200).send('Profile saved successfully');
-//     } catch (error) {
-//         console.error('Error saving profile:', error);
-//         res.status(500).send('Failed to save profile');
-//     }
-// };
-
 
 
 module.exports.saveCVProfile = async (req, res) => {
@@ -566,11 +504,31 @@ module.exports.deleteCVEducation = async (req, res) => {
         // Check if any rows were affected (i.e., entry was deleted)
         if (deleteResult.rowsAffected[0] > 0) {
             // Return 200 status code for successful deletion
-            return res.status(200).json({ message: 'Education entry deleted successfully' });
+
+            const secondApiUrl = 'http://172.16.20.168:3010/api/deleteCVEducation';
+
+
+            try {
+                const secondApiResponse = await axios.post(secondApiUrl, { EduBacID }, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                console.log('Second API response:', secondApiResponse.data);
+
+                // Return success response to the frontend
+                return res.status(200).json({ message: 'Education entry deleted successfully' });
+
+            } catch (secondApiError) {
+                console.error('Error calling second API:', secondApiError.message);
+                return res.status(502).send('Failed to Save Into Second Database: ' + secondApiError.message);
+            }
+
         } else {
             // Return 201 status code if no matching entry was found
             return res.status(201).json({ message: 'Education entry not found' });
         }
+
+
     } catch (error) {
         console.error('Error deleting education entry:', error.message);
         return res.status(500).json({ message: 'Error deleting education entry' });
@@ -746,8 +704,24 @@ module.exports.deleteCVWork = async (req, res) => {
             await pool.request()
                 .input('WorkExpID', sql.Int, WorkExpID)
                 .query('DELETE FROM Work WHERE WorkExpID = @WorkExpID');
+            const secondApiUrl = 'http://172.16.20.168:3010/api/deleteCVWork';
 
-            res.status(200).json({ message: 'Work experience deleted successfully' });
+
+            try {
+                const secondApiResponse = await axios.post(secondApiUrl, { WorkExpID }, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                console.log('Second API response:', secondApiResponse.data);
+
+                // Return success response to the frontend
+                return res.status(200).json({ message: 'Work experience deleted successfully' });
+
+
+            } catch (secondApiError) {
+                console.error('Error calling second API:', secondApiError.message);
+                return res.status(502).send('Failed to Save Into Second Database: ' + secondApiError.message);
+            }
         } else {
             res.status(404).json({ message: 'Work experience not found' });
         }
@@ -1013,8 +987,23 @@ module.exports.deleteCVSkill = async (req, res) => {
         await pool.request()
             .input('SoftID', sql.Int, SoftID)
             .query('DELETE FROM SoftSkill WHERE SoftID = @SoftID');
+        const secondApiUrl = 'http://172.16.20.168:3010/api/deleteCVSkill';
 
-        res.status(200).send('Skill deleted successfully');
+
+        try {
+            const secondApiResponse = await axios.post(secondApiUrl, { SoftID }, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            console.log('Second API response:', secondApiResponse.data);
+
+            // Return success response to the frontend
+            return res.status(200).send('Skill deleted successfully');
+
+        } catch (secondApiError) {
+            console.error('Error calling second API:', secondApiError.message);
+            return res.status(502).send('Failed to Save Into Second Database: ' + secondApiError.message);
+        }
     } catch (error) {
         console.error('Error deleting skill:', error.message);
         res.status(500).send('Server error');

@@ -115,6 +115,7 @@ class _GenerateQRViewState extends State<GenerateQRView> {
       return; // Stop execution if no sections are selected
     }
 
+    if (!mounted) return; // Check if the widget is still mounted
     setState(() {
       isLoading = true;
     });
@@ -146,21 +147,23 @@ class _GenerateQRViewState extends State<GenerateQRView> {
         title: title, // Pass the title here
       );
 
-      if (response != null) {
+      if (response != null && mounted) {
         devtools.log('QR Code Generated Successfully');
 
         // Show the generated QR code
         _showGeneratedQRCode(response['qrCodeImage']);
-      } else {
+      } else if (mounted) {
         setState(() {
           errorMessage = 'Failed to generate QR code. Please try again later.';
         });
       }
     }
 
-    setState(() {
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
 // Function to display the generated QR code image
@@ -176,7 +179,8 @@ class _GenerateQRViewState extends State<GenerateQRView> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context, 'qr_generated');
-                Navigator.pop(context, 'qr_generated'); // Pop back to the QR list page
+                Navigator.pop(
+                    context, 'qr_generated'); // Pop back to the QR list page
               },
               child: const Text('Close'),
             ),

@@ -279,12 +279,8 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'SoftID': softID}),
         );
-        final response2 = await http.post(
-          Uri.parse('http://172.16.20.168:3010/api/deleteCVSkill'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'SoftID': softID}),
-        );
-        if (response.statusCode == 200 && response2.statusCode == 200) {
+
+        if (response.statusCode == 200) {
           setState(() {
             _skillEntries.removeAt(index);
             _softSkillControllers.removeAt(index);
