@@ -106,13 +106,13 @@ class _qrViewState extends State<qrView> {
     }
   }
 
-  void _showQRCodeImage(String qrCodeImage, int qrId) {
+  void _showQRCodeImage(String qrCodeImage, int qrId, String qrTitle) {
     final qrCodeImageBytes = base64Decode(qrCodeImage);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('QR Code'),
+          title: Text(qrTitle), // Show the QR code title here
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -195,7 +195,9 @@ class _qrViewState extends State<qrView> {
 
     // Check if a QR code was generated and refresh the list if needed
     if (result == 'qr_generated') {
-      _fetchQRCodes(); // Refresh the QR code list
+      setState(() {
+        _fetchQRCodes(); // Refresh the QR code list when navigating back
+      });
     }
   }
 
@@ -228,19 +230,29 @@ class _qrViewState extends State<qrView> {
                               itemCount: qrCodes.length,
                               itemBuilder: (context, index) {
                                 final qrCode = qrCodes[index];
-                                final expireDate = DateTime.parse(qrCode['expireDate']);
-                                final formattedDate = '${expireDate.day}/${expireDate.month}/${expireDate.year}';
+                                final expireDate =
+                                    DateTime.parse(qrCode['expireDate']);
+                                final formattedDate =
+                                    '${expireDate.day}/${expireDate.month}/${expireDate.year}';
+
+                                // Fetch the title from qrCodes data
+                                final qrTitle =
+                                    qrCode['title'] ?? 'Untitled QR Code';
 
                                 return Card(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(15.0),
                                   ),
                                   child: ListTile(
-                                    title: Text('QR Code ${index + 1}'),
-                                    subtitle: Text('Expires on: $formattedDate'),
+                                    title: Text(
+                                        qrTitle), // Display the title from qrCodes
+                                    subtitle:
+                                        Text('Expires on: $formattedDate'),
                                     onTap: () => _showQRCodeImage(
-                                        qrCode['qrCodeImage'],
-                                        qrCode['qrId']), // Ensure qrId is passed correctly
+                                      qrCode['qrCodeImage'],
+                                      qrCode['qrId'], // Pass qrId
+                                      qrTitle, // Pass title to show in dialog
+                                    ),
                                   ),
                                 );
                               },
@@ -255,7 +267,8 @@ class _qrViewState extends State<qrView> {
                 onPressed: _navigateToGenerateQRView,
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30), // Larger rounded button
+                    borderRadius:
+                        BorderRadius.circular(30), // Larger rounded button
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 50, // More horizontal padding for larger button

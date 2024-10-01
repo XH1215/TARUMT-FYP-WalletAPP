@@ -17,7 +17,7 @@ let poolPromise = sql.connect(dbConfigWallet)
 
 // Generate QR Code and save in DB
 module.exports.generateQRCode = async (req, res) => {
-    const { userID, PerID, EduBacID, CerID, SoftID, WorkExpID } = req.body;
+    const { userID, PerID, EduBacID, CerID, SoftID, WorkExpID, title } = req.body;
     console.log("\n\nPerID is : " + PerID + "\n\n\n");
     console.log("\n\n\n SoftSkill ID is: " + SoftID);
     try {
@@ -39,11 +39,12 @@ module.exports.generateQRCode = async (req, res) => {
             .input('WorkExpIDs', sql.VarChar, WorkExpID)
             .input('QRHashCode', sql.VarChar, qrHash)
             .input('QRCodeImage', sql.VarBinary, qrCodeBuffer)
+            .input('title', sql.VarChar, title)
             .query(`
                 INSERT INTO QRPermission 
-                (userID, PerID, EduBacIDs, CerIDs, SoftIDs, WorkExpIDs, QRHashCode, ExpireDate, QRCodeImage) 
+                (userID, PerID, EduBacIDs, CerIDs, SoftIDs, WorkExpIDs, QRHashCode, ExpireDate, QRCodeImage, title) 
                 OUTPUT INSERTED.QRCodeImage
-                VALUES (@userID, @PerID, @EduBacIDs, @CerIDs, @SoftIDs, @WorkExpIDs, @QRHashCode, DATEADD(DAY, 30, GETDATE()), @QRCodeImage);
+                VALUES (@userID, @PerID, @EduBacIDs, @CerIDs, @SoftIDs, @WorkExpIDs, @QRHashCode, DATEADD(DAY, 30, GETDATE()), @QRCodeImage, @title);
             `);
 
         const qrCodeImageBase64 = result.recordset[0].QRCodeImage.toString('base64');
@@ -153,7 +154,7 @@ module.exports.fetchQRCodesByUserId = async (req, res) => {
         const qrCodesResult = await pool.request()
             .input('userID', sql.Int, userID)
             .query(`
-                SELECT QRPermissionID, QRHashCode, QRCodeImage, ExpireDate 
+                SELECT title, QRPermissionID, QRHashCode, QRCodeImage, ExpireDate 
                 FROM QRPermission 
                 WHERE UserID = @userID AND ExpireDate > GETDATE()
             `);
@@ -163,6 +164,7 @@ module.exports.fetchQRCodesByUserId = async (req, res) => {
         }
 
         const qrCodes = qrCodesResult.recordset.map(record => ({
+            title: record.title,
             qrId: record.QRPermissionID,  // Add the QRPermissionID here
             qrHashCode: record.QRHashCode,
             qrCodeImage: record.QRCodeImage.toString('base64'),

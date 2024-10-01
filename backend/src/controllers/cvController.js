@@ -216,7 +216,7 @@ module.exports.saveCVProfile = async (req, res) => {
         const profilePicBuffer = Photo ? Buffer.from(Photo, 'base64') : null;
         let PerID = passedPerID;
         // If PerID is passed from frontend, try to update the existing profile
-        if (PerID == 0) {
+        if (PerID != 0) {
             console.log(`Attempting to update profile with PerID: ${PerID}`);
             // Try updating the profile using the provided PerID
             const updateResult = await pool.request()
@@ -279,7 +279,7 @@ module.exports.saveCVProfile = async (req, res) => {
         console.log("PerID:", PerID);
 
         // Call the second API, passing the PerID and other profile data
-        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVProfile';
+        const secondApiUrl = 'http://172.16.20.168:3010/api/saveCVProfile';
         const profileData = { ...req.body, PerID }; // Add PerID to profile data
 
         try {
@@ -488,7 +488,7 @@ module.exports.saveCVEducation = async (req, res) => {
         console.log("educationEntries: " + educationEntries[0].start_date);
 
 
-        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVEducation';
+        const secondApiUrl = 'http://172.16.20.168:3010/api/saveCVEducation';
         const secondApiData = { ...req.body, educationEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -664,7 +664,7 @@ module.exports.saveCVWork = async (req, res) => {
         const workEntries = [...existingWorkEntries, ...newWorkWithID];
         console.log(workEntries[0]);
 
-        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVWork';
+        const secondApiUrl = 'http://172.16.20.168:3010/api/saveCVWork';
         const secondApiData = { ...req.body, workEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -930,7 +930,7 @@ module.exports.saveCVSkill = async (req, res) => {
         }
 
         const skillEntries = [...existingSkillEntries, ...newSkillsWithID];
-        const secondApiUrl = 'http://192.168.1.9:3010/api/saveCVSkill';
+        const secondApiUrl = 'http://172.16.20.168:3010/api/saveCVSkill';
         const secondApiData = { ...req.body, skillEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -1093,8 +1093,8 @@ module.exports.updateCertificationStatus = async (req, res) => {
 
         // Determine the external API URL based on the isPublic value
         const apiUrl = isPublic
-            ? 'http://192.168.1.9:3010/api/updateCVCertification'
-            : 'http://192.168.1.9:3010/api/deleteCVCertification';
+            ? 'http://172.16.20.168:3010/api/updateCVCertification'
+            : 'http://172.16.20.168:3010/api/deleteCVCertification';
         console.log(apiUrl);
         // Prepare the certification object for the external API call
         const certData = {
@@ -1349,10 +1349,11 @@ module.exports.showDetails = async (req, res) => {
         res.status(500).json({ error: 'Server error. Please try again later.' });
     }
 };
+
 module.exports.showDetailsQR = async (req, res) => {
     try {
         const { accountID } = req.body; // Get accountID from the request body
-
+        console.log("Called Backnd with AccID: " + accountID);
         if (!accountID) {
             return res.status(400).json({ error: 'AccountID is required' });
         }
@@ -1376,8 +1377,9 @@ module.exports.showDetailsQR = async (req, res) => {
         const profileResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(profileQuery);
-
+        console.log("Done Search Profile");
         if (profileResult.recordset.length === 0) {
+            console.log("Search Profile Error");
             return res.status(404).json({ error: 'User not found' });
         }
 

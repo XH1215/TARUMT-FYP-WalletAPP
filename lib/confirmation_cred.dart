@@ -33,7 +33,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
         // Step 1: Call getWalletData API
         final walletResponse = await http.post(
-          Uri.parse('http://192.168.1.9:3000/api/getWalletData'),
+          Uri.parse('http://172.16.20.168:3000/api/getWalletData'),
           headers: {
             'Content-Type': 'application/json',
           },
@@ -58,7 +58,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             devtools.log("Step2: Initiating getAuthToken call...");
 
             final tokenResponse = await http.post(
-              Uri.parse('http://192.168.1.9:3000/api/getAuthToken'),
+              Uri.parse('http://172.16.20.168:3000/api/getAuthToken'),
               headers: {
                 'Content-Type': 'application/json',
               },
@@ -74,7 +74,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               devtools.log("Step3: Fetching credentials using authToken...");
 
               final credentialsResponse = await http.post(
-                Uri.parse('http://192.168.1.9:3000/api/receiveOffer'),
+                Uri.parse('http://172.16.20.168:3000/api/receiveOffer'),
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization':
@@ -163,7 +163,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     try {
       devtools.log("Calling storeCredential and saveCVCertification API...");
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:3000/api/storeCredential'),
+        Uri.parse('http://172.16.20.168:3000/api/storeCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -191,7 +191,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       //------------------------------------------
       // Step 1: Call saveCVCertification API
       final saveToDB = await http.post(
-        Uri.parse('http://192.168.1.9:3000/api/saveCVCertification'),
+        Uri.parse('http://172.16.20.168:3000/api/saveCVCertification'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -233,7 +233,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
       // Call the delete API with POST method
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:3000/api/deleteCredential'),
+        Uri.parse('http://172.16.20.168:3000/api/deleteCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
