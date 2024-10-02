@@ -35,10 +35,9 @@ class _ViewCVState extends State<ViewCV> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.16.20.114:4000/api/showDetails'),
+        Uri.parse('http://192.168.1.9:4000/api/showDetails'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(
-            {'accountID': accountID}), // Send accountID to the backend
+        body: jsonEncode({'accountID': accountID}),
       );
 
       if (response.statusCode == 200) {
@@ -46,6 +45,8 @@ class _ViewCVState extends State<ViewCV> {
           _cvData = jsonDecode(response.body); // Parse the JSON response
           _isLoading = false;
         });
+      } else if (response.statusCode == 404) {
+        _showNotFoundDialog(); // Show dialog if status code is 404
       } else {
         setState(() {
           _errorMessage = "Failed to fetch CV details.";
@@ -61,13 +62,35 @@ class _ViewCVState extends State<ViewCV> {
     }
   }
 
+  // Show a dialog if the response is 404 (CV not found)
+  Future<void> _showNotFoundDialog() async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('CV Not Found'),
+          content: const Text('Please Create Your Profile Before View CV.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context)
+                    .pop(); // Navigate back to the previous page
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Get accountID from SharedPreferences
   Future<int?> _getAccountID() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final accountID = prefs.getInt('accountID');
-      devtools.log(
-          'Retrieved accountID: $accountID'); // Make sure this shows the correct value
+      devtools.log('Retrieved accountID: $accountID');
       return accountID;
     } catch (e) {
       devtools.log('Error retrieving accountID: $e');
@@ -91,9 +114,7 @@ class _ViewCVState extends State<ViewCV> {
           ? const Center(
               child: CircularProgressIndicator()) // Show loading spinner
           : _errorMessage != null
-              ? Center(
-                  child: Text(
-                      _errorMessage!)) // Show error message if there is one
+              ? Center(child: Text(_errorMessage!))
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
@@ -101,35 +122,29 @@ class _ViewCVState extends State<ViewCV> {
                     children: [
                       _buildSectionTitle(Icons.person, 'Profile Information'),
                       _buildProfileSection(_cvData!['profile']),
-                      const SizedBox(
-                          height: 20), // More space between categories
+                      const SizedBox(height: 20),
                       _buildSectionTitle(Icons.school, 'Education Information'),
                       _cvData!['education'] != null
                           ? _buildEducationSection(_cvData!['education'])
                           : const Text("No education information available."),
-                      const SizedBox(
-                          height: 20), // More space between categories
+                      const SizedBox(height: 20),
                       _buildSectionTitle(Icons.work, 'Work Experience'),
                       _cvData!['workExperience'] != null
                           ? _buildWorkSection(_cvData!['workExperience'])
                           : const Text("No work experience available."),
-                      const SizedBox(
-                          height: 20), // More space between categories
+                      const SizedBox(height: 20),
                       _buildSectionTitle(Icons.lightbulb, 'Skills'),
                       _cvData!['skills'] != null
                           ? _buildSoftSkillsSection(_cvData!['skills'])
                           : const Text("No skills information available."),
-                      const SizedBox(
-                          height: 20), // More space between categories
-
-                      // Certifications Section
+                      const SizedBox(height: 20),
                       _buildSectionTitle(Icons.star, 'Certifications'),
                       _cvData!['certification'] != null
                           ? _buildCertificationSection(
                               _cvData!['certification'])
                           : const Text(
                               "No certification information available."),
-                      const SizedBox(height: 30), // Add some spacing
+                      const SizedBox(height: 30),
                     ],
                   ),
                 ),
@@ -146,10 +161,7 @@ class _ViewCVState extends State<ViewCV> {
           const SizedBox(width: 8.0),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18.0,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -229,22 +241,40 @@ class _ViewCVState extends State<ViewCV> {
     );
   }
 
-  // Display skills information
+// Display skills information, including SoftLevel
   Widget _buildSoftSkillsSection(List<dynamic> softSkills) {
     return Column(
       children: softSkills.map((skill) {
         return Column(
           children: [
             _buildInfoBox([
-              'Skill: ${skill['skill']}',
-              'Description: ${skill['description']}',
+              'Skill: ${skill['skill']}', // Skill name
+              'Description: ${skill['description']}', // Skill description
+              'Level: ${_mapSoftLevelToText(skill['level'])}', // Map the SoftLevel to human-readable text
             ]),
-            const SizedBox(
-                height: 5), // Less space between items in the same category
+            const SizedBox(height: 5),
           ],
         );
       }).toList(),
     );
+  }
+
+// Helper function to map SoftLevel to text
+  String _mapSoftLevelToText(int level) {
+    switch (level) {
+      case 1:
+        return 'Beginner';
+      case 2:
+        return 'Intermediate';
+      case 3:
+        return 'Advanced';
+      case 4:
+        return 'Expert';
+      case 5:
+        return 'Master';
+      default:
+        return 'Unknown'; // Fallback if SoftLevel is outside the expected range
+    }
   }
 
   // Display certifications information

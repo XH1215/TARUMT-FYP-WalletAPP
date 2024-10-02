@@ -76,7 +76,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.114:4000/api/getCVProfile?accountID=$accountID'),
+            'http://192.168.1.9:4000/api/getCVProfile?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -127,7 +127,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.114:4000/api/getPersonDetails?accountID=$accountID'),
+            'http://192.168.1.9:4000/api/getPersonDetails?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -290,14 +290,14 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
     try {
       // final response = await http.post(
-      //   Uri.parse('http://172.16.20.114:4000/api/saveCVProfile'),
+      //   Uri.parse('http://192.168.1.9:4000/api/saveCVProfile'),
       //   headers: <String, String>{
       //     'Content-Type': 'application/json; charset=UTF-8',
       //   },
       //   body: jsonEncode(profileData),
       // );
       // final response2 = await http.post(
-      //   Uri.parse('http://172.16.20.114:3010/api/saveCVProfile'),
+      //   Uri.parse('http://192.168.1.9:3010/api/saveCVProfile'),
       //   headers: <String, String>{
       //     'Content-Type': 'application/json; charset=UTF-8',
       //   },
@@ -315,15 +315,16 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       //   devtools.log('Failed to save profile: ${response.statusCode}');
       //   _showErrorDialog('Failed to save profile.');
       // }
-
+      devtools.log("Check this:   $PerID");
       final response = await http.post(
-        Uri.parse('http://172.16.20.114:4000/api/saveCVProfile'),
+        Uri.parse('http://192.168.1.9:4000/api/saveCVProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
         body: jsonEncode(profileData),
       );
-
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+      PerID = responseData['PerID'];
       devtools.log('Response 1 status: ${response.statusCode}');
       devtools.log('Response 1 body: ${response.body}');
 
@@ -332,28 +333,33 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       if (response.statusCode == 200) {
         devtools.log('Profile saved successfully');
         showErrorDialog(context, 'Profile saved successfully');
+        setState(() {
+          _isSaving = false; // Stop saving when done
+        });
       } else if (response.statusCode == 501) {
         devtools.log('Profile saved successfully');
         showErrorDialog(context, response.body);
+        setState(() {
+          _isSaving = true; // Stop saving when done
+        });
       } else if (response.statusCode == 502) {
         devtools.log('Profile saved successfully');
         showErrorDialog(context, response.body);
+        setState(() {
+          _isSaving = true; // Stop saving when done
+        });
       } else {
         devtools.log('Failed to save profile: ${response.statusCode}');
         showErrorDialog(context, response.body);
+        setState(() {
+          _isSaving = true; // Stop saving when done
+        });
       }
     } catch (e) {
       if (!mounted) return;
 
       devtools.log('Error saving profile data: $e');
       showErrorDialog(context, 'An error occurred while saving the profile.');
-    } finally {
-      if (mounted) {
-        // Check if the widget is still mounted
-        setState(() {
-          _isSaving = false; // Stop saving when done
-        });
-      }
     }
   }
 

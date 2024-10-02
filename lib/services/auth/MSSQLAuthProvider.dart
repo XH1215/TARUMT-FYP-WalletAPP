@@ -7,7 +7,7 @@ import 'dart:developer' as devtools show log;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MSSQLAuthProvider implements AuthProvider {
-  final String baseUrl = "http://172.16.20.114:4000/api";
+  final String baseUrl = "http://192.168.1.9:4000/api";
 
   AuthUser? _currentUser;
 
@@ -145,6 +145,7 @@ class MSSQLAuthProvider implements AuthProvider {
     required String cerID,
     required String softID,
     required String workExpID,
+    required String title,
   }) async {
     try {
       final qrData = {
@@ -154,8 +155,9 @@ class MSSQLAuthProvider implements AuthProvider {
         'CerID': cerID,
         'SoftID': softID,
         'WorkExpID': workExpID,
+        'title': title,
       };
-      devtools.log("\n\nPerID is : " + softID.toString() + "\n\n\n");
+      devtools.log("\n\nPerID is : $softID\n\n\n");
       final response = await http.post(
         Uri.parse('$baseUrl/generateQRCode'),
         headers: <String, String>{
@@ -232,7 +234,7 @@ class MSSQLAuthProvider implements AuthProvider {
   // Function to fetch CV data by QR ID
   Future<Map<String, dynamic>> fetchCVDataByQRCode(int qrId) async {
     final url = Uri.parse(
-        'http://172.16.20.114:4000/api/fetchCVByQRCode'); // Change to actual API URL
+        'http://192.168.1.9:4000/api/fetchCVByQRCode'); // Change to actual API URL
     final response = await http.post(
       url,
       headers: {

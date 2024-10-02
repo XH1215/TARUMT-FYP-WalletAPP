@@ -17,7 +17,7 @@ async function receiveExistedCredential(req, res) {
 
         // Step 3: Fetch credential records from the ACA-Py agent (holder's side)
         const credentialRecordResponse = await axios.get(
-            `http://172.16.20.114:7011/credentials`,
+            `http://192.168.1.9:7011/credentials`,
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,
@@ -53,18 +53,5 @@ async function receiveExistedCredential(req, res) {
     }
 }
 
-
-async function sendMessage() {
-    try {
-        // Example: Call the external Node.js project endpoint
-        const response = await axios.post(
-            'http://172.16.20.114:5000/router/storeSuccess',  // Replace with the actual URL of the other Node.js project
-            { Offer: "Success" }
-        );
-        console.log('Message sent successfully:', response.data);
-    } catch (error) {
-        console.error('Error sending message:', error.message);
-    }
-}
 
 module.exports = { receiveExistedCredential };

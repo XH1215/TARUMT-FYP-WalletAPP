@@ -85,7 +85,8 @@ class SelfCredentialPage1 extends StatelessWidget {
               // Using Image for Work Experience
               _buildInfoBox(
                 context,
-                icon: const Icon(Icons.work, size: 50.0, color: Color(0xFF171B63)),
+                icon: const Icon(Icons.work,
+                    size: 50.0, color: Color(0xFF171B63)),
                 label: 'Work Experience',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -101,8 +102,8 @@ class SelfCredentialPage1 extends StatelessWidget {
               // Using Image for Soft Skill
               _buildInfoBox(
                 context,
-                icon:
-                    const Icon(Icons.lightbulb, size: 50.0, color: Color(0xFF171B63)),
+                icon: const Icon(Icons.lightbulb,
+                    size: 50.0, color: Color(0xFF171B63)),
                 label: 'Soft Skill',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -148,13 +149,12 @@ class SelfCredentialPage1 extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(10.0),
-              child: icon != null
-                  ? icon // Show the icon if provided
-                  : Image.asset(
-                      imagePath!, // Show the image if icon is not provided
-                      width: 45.0, // Adjust width as needed
-                      height: 45.0, // Adjust height as needed
-                    ),
+              child: icon ??
+                  Image.asset(
+                    imagePath!, // Show the image if icon is not provided
+                    width: 45.0, // Adjust width as needed
+                    height: 45.0, // Adjust height as needed
+                  ),
             ),
             const SizedBox(width: 20.0), // Space between image/icon and text
             Text(

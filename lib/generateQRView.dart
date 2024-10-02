@@ -1,3 +1,4 @@
+import 'package:firstly/show_error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
@@ -5,7 +6,7 @@ import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
 import 'package:http/http.dart' as http;
 
 class GenerateQRView extends StatefulWidget {
-  const GenerateQRView({Key? key}) : super(key: key);
+  const GenerateQRView({super.key});
 
   @override
   _GenerateQRViewState createState() => _GenerateQRViewState();
@@ -14,9 +15,11 @@ class GenerateQRView extends StatefulWidget {
 class _GenerateQRViewState extends State<GenerateQRView> {
   final _formKey = GlobalKey<FormState>();
   final MSSQLAuthProvider _authProvider = MSSQLAuthProvider();
+  final TextEditingController _titleController = TextEditingController();
 
   bool isLoading = false;
   String? errorMessage;
+
   // Data from backend
   Map<String, dynamic> userProfile = {};
   List<dynamic> userEducation = [];
@@ -48,11 +51,11 @@ class _GenerateQRViewState extends State<GenerateQRView> {
 
       if (user != null) {
         final response = await http.post(
-          Uri.parse('http://172.16.20.114:4000/api/showDetailsQR'),
+          Uri.parse('http://192.168.1.9:4000/api/showDetailsQR'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'accountID': user.accountID}),
         );
-
+        if (!mounted) return;
         if (response.statusCode == 200) {
           final details = jsonDecode(response.body);
           setState(() {
@@ -62,29 +65,25 @@ class _GenerateQRViewState extends State<GenerateQRView> {
             userCertifications = details['certification'];
             userSkills = details['skills']; // Assign skills data
           });
-
-          // Log the userProfile to check if PerID is available
-          devtools.log('User Profile: ${userProfile.toString()}');
-          // Check if PerID exists
-          if (userProfile.containsKey('perID')) {
-            devtools.log('PerID: ${userProfile['perID']}');
-          } else {
-            devtools.log('PerID not found in userProfile');
-          }
+        } else if (response.statusCode == 404) {
+          errorMessage =
+              'Please Create Your Profile Before Generating CV QR Code';
         } else {
           setState(() {
             errorMessage = 'Failed to fetch user details';
           });
+          if (!mounted) return;
         }
       } else {
         setState(() {
           errorMessage = 'User not logged in.';
         });
+        if (!mounted) return;
       }
     } catch (e) {
       devtools.log('Error fetching user details: $e');
       setState(() {
-        errorMessage = 'Failed to fetch user details. Please try again later.';
+        errorMessage = 'Please Create Your Profile Before View CV.';
       });
     } finally {
       setState(() {
@@ -94,51 +93,82 @@ class _GenerateQRViewState extends State<GenerateQRView> {
   }
 
   Future<void> _generateQRCode() async {
+    // Validate title and selections
+    final title = _titleController.text.trim();
+
+    // Check if the title is empty
+    if (title.isEmpty) {
+      await showErrorDialog(
+        context,
+        'Title cannot be empty.',
+      );
+      return; // Stop execution if title is empty
+    }
+
+    // Check if at least one section is selected
+    if (selectedEduBacIDs.isEmpty &&
+        selectedWorkExpIDs.isEmpty &&
+        selectedSkillIDs.isEmpty &&
+        selectedCerIDs.isEmpty) {
+      await showErrorDialog(
+        context,
+        'Please choose at least one from Education, Work Experience, Skills, or Certifications.',
+      );
+      return; // Stop execution if no sections are selected
+    }
+
+    if (!mounted) return; // Check if the widget is still mounted
     setState(() {
       isLoading = true;
     });
 
     final user = _authProvider.currentUser;
     if (user != null) {
-      // Ensure that each ID string ends with a semicolon
-      final EduBacID = selectedEduBacIDs.map((e) => '$e').join(';') + ';';
-      final CerID = selectedCerIDs.map((e) => '$e').join(';') + ';';
-      final SoftID = selectedSkillIDs.map((e) => '$e').join(';') + ';';
-      final WorkExpID = selectedWorkExpIDs.map((e) => '$e').join(';') + ';';
-      // Ensure PerID always ends with a semicolon
+      // Prepare IDs as strings with semicolons
+      final EduBacID = '${selectedEduBacIDs.map((e) => '$e').join(';')};';
+      final CerID = '${selectedCerIDs.map((e) => '$e').join(';')};';
+      final SoftID = '${selectedSkillIDs.map((e) => '$e').join(';')};';
+      final WorkExpID = '${selectedWorkExpIDs.map((e) => '$e').join(';')};';
       final PerID =
           userProfile['perID'] != null ? '${userProfile['perID']};' : '';
-      devtools.log("EduBacID:  " + EduBacID);
-      devtools.log("CerID:  " + CerID);
-      devtools.log("SoftID:  " + SoftID);
 
-      // Construct the QR data to be sent to the backend
+      // Log values for debugging
+      devtools.log("EduBacID: $EduBacID");
+      devtools.log("CerID: $CerID");
+      devtools.log("SoftID: $SoftID");
+      devtools.log("Title: $title");
 
+      // Pass the title along with other parameters
       final response = await _authProvider.generateQRCode(
         userID: user.accountID.toString(),
-        perID: PerID, // Send PerID with semicolon
+        perID: PerID,
         eduBacID: EduBacID,
         cerID: CerID,
         softID: SoftID,
         workExpID: WorkExpID,
+        title: title, // Pass the title here
       );
 
-      if (response != null) {
+      if (response != null && mounted) {
         devtools.log('QR Code Generated Successfully');
+
+        // Show the generated QR code
         _showGeneratedQRCode(response['qrCodeImage']);
-      } else {
+      } else if (mounted) {
         setState(() {
           errorMessage = 'Failed to generate QR code. Please try again later.';
         });
       }
     }
 
-    setState(() {
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
-  // Function to display the generated QR code image
+// Function to display the generated QR code image
   void _showGeneratedQRCode(String qrCodeImage) {
     final qrCodeImageBytes = base64Decode(qrCodeImage);
     showDialog(
@@ -151,6 +181,8 @@ class _GenerateQRViewState extends State<GenerateQRView> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context, 'qr_generated');
+                Navigator.pop(
+                    context, 'qr_generated'); // Pop back to the QR list page
               },
               child: const Text('Close'),
             ),
@@ -162,6 +194,20 @@ class _GenerateQRViewState extends State<GenerateQRView> {
 
   @override
   Widget build(BuildContext context) {
+    if (errorMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (mounted) {
+          await showErrorDialog(
+            context,
+            errorMessage!,
+          );
+        }
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -172,150 +218,155 @@ class _GenerateQRViewState extends State<GenerateQRView> {
         padding: const EdgeInsets.all(16.0),
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : errorMessage != null
-                ? Center(child: Text(errorMessage!))
-                : Form(
-                    key: _formKey,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 1. Profile Section
-                          const Text('Profile:',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                          ListTile(
-                            title: Text(userProfile['name'] ?? 'No Name'),
-                            subtitle: Text(userProfile['email'] ?? 'No Email'),
-                          ),
-                          const SizedBox(height: 16),
+            : Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title input field
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
-                          // 2. Education Section
-                          const Text('Education:',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                          ExpansionTile(
-                            title: const Text('Select Education'),
-                            children: userEducation.map((edu) {
-                              return CheckboxListTile(
-                                value:
-                                    selectedEduBacIDs.contains(edu['eduBacID']),
-                                title: Text(edu['institute_name'] ?? ''),
-                                subtitle: Text(edu['level'] ?? ''),
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    if (value == true) {
-                                      selectedEduBacIDs.add(edu['eduBacID']);
-                                    } else {
-                                      selectedEduBacIDs.remove(edu['eduBacID']);
-                                    }
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
+                      // Profile Section
+                      const Text('Profile:',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      ListTile(
+                        title: Text(userProfile['name'] ?? 'No Name'),
+                        subtitle: Text(userProfile['email'] ?? 'No Email'),
+                      ),
+                      const SizedBox(height: 16),
 
-                          // 3. Work Experience Section
-                          const Text('Work Experience:',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                          ExpansionTile(
-                            title: const Text('Select Work Experience'),
-                            children: userWorkExperience.map((work) {
-                              return CheckboxListTile(
-                                value: selectedWorkExpIDs
-                                    .contains(work['workExpID']),
-                                title: Text(work['job_title'] ?? ''),
-                                subtitle: Text(work['company_name'] ?? ''),
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    if (value == true) {
-                                      selectedWorkExpIDs.add(work['workExpID']);
-                                    } else {
-                                      selectedWorkExpIDs
-                                          .remove(work['workExpID']);
-                                    }
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
+                      // Education Section
+                      const Text('Education:',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      ExpansionTile(
+                        title: const Text('Select Education'),
+                        children: userEducation.map((edu) {
+                          return CheckboxListTile(
+                            value: selectedEduBacIDs.contains(edu['eduBacID']),
+                            title: Text(edu['institute_name'] ?? ''),
+                            subtitle: Text(edu['level'] ?? ''),
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  selectedEduBacIDs.add(edu['eduBacID']);
+                                } else {
+                                  selectedEduBacIDs.remove(edu['eduBacID']);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
 
-                          // 4. Skills Section
-                          const Text('Skills:',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                          ExpansionTile(
-                            title: const Text('Select Skills'),
-                            children: userSkills.map((skill) {
-                              return CheckboxListTile(
-                                value:
-                                    selectedSkillIDs.contains(skill['SoftID']),
-                                title: Text(skill['skill'] ?? ''),
-                                subtitle: Text(skill['description'] ?? ''),
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    if (value == true) {
-                                      selectedSkillIDs.add(skill['SoftID']);
-                                    } else {
-                                      selectedSkillIDs.remove(skill['SoftID']);
-                                    }
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
+                      // Work Experience Section
+                      const Text('Work Experience:',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      ExpansionTile(
+                        title: const Text('Select Work Experience'),
+                        children: userWorkExperience.map((work) {
+                          return CheckboxListTile(
+                            value:
+                                selectedWorkExpIDs.contains(work['workExpID']),
+                            title: Text(work['job_title'] ?? ''),
+                            subtitle: Text(work['company_name'] ?? ''),
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  selectedWorkExpIDs.add(work['workExpID']);
+                                } else {
+                                  selectedWorkExpIDs.remove(work['workExpID']);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
 
-                          // 5. Certification Section
-                          const Text('Certifications:',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                          ExpansionTile(
-                            title: const Text('Select Certifications'),
-                            children: userCertifications.map((cert) {
-                              return CheckboxListTile(
-                                value: selectedCerIDs.contains(cert['cerID']),
-                                title: Text(cert['name'] ?? ''),
-                                subtitle: Text(cert['issuer'] ?? ''),
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    if (value == true) {
-                                      selectedCerIDs.add(cert['cerID']);
-                                    } else {
-                                      selectedCerIDs.remove(cert['cerID']);
-                                    }
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 24),
+                      // Skills Section
+                      const Text('Skills:',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      ExpansionTile(
+                        title: const Text('Select Skills'),
+                        children: userSkills.map((skill) {
+                          return CheckboxListTile(
+                            value: selectedSkillIDs.contains(skill['SoftID']),
+                            title: Text(skill['skill'] ?? ''),
+                            subtitle: Text(skill['description'] ?? ''),
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  selectedSkillIDs.add(skill['SoftID']);
+                                } else {
+                                  selectedSkillIDs.remove(skill['SoftID']);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
 
-                          // Generate QR Code Button
-                          Center(
-                            child: ElevatedButton(
-                              onPressed: isLoading ? null : _generateQRCode,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
-                                  vertical: 15,
-                                ),
-                              ),
-                              child: isLoading
-                                  ? const CircularProgressIndicator()
-                                  : const Text('Generate QR Code'),
+                      // Certification Section
+                      const Text('Certifications:',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      ExpansionTile(
+                        title: const Text('Select Certifications'),
+                        children: userCertifications.map((cert) {
+                          return CheckboxListTile(
+                            value: selectedCerIDs.contains(cert['cerID']),
+                            title: Text(cert['name'] ?? ''),
+                            subtitle: Text(cert['issuer'] ?? ''),
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  selectedCerIDs.add(cert['cerID']);
+                                } else {
+                                  selectedCerIDs.remove(cert['cerID']);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Generate QR Code Button
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : _generateQRCode,
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 40,
+                              vertical: 15,
                             ),
                           ),
-                        ],
+                          child: isLoading
+                              ? const CircularProgressIndicator()
+                              : const Text('Generate QR Code'),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
+                ),
+              ),
       ),
     );
   }

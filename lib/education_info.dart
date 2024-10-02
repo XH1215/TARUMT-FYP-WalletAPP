@@ -55,16 +55,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   bool _isEditing = false;
   bool _isLoading = false;
 
-  final List<String?> _levelOfEducationErrors = [];
-  final List<String?> _fieldOfStudyErrors = [];
-  final List<String?> _instituteNameErrors = [];
-  final List<String?> _instituteCountryErrors = [];
-  final List<String?> _instituteStateErrors = [];
-  final List<String?> _instituteCityErrors = [];
-  final List<String?> _startDateErrors = [];
-  final List<String?> _endDateErrors = [];
-  final List<String?> _dateValidationErrors = [];
-
   @override
   void initState() {
     super.initState();
@@ -84,16 +74,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _startDateList.clear();
       _endDateList.clear();
       _isPublicList.clear();
-
-      _levelOfEducationErrors.clear();
-      _fieldOfStudyErrors.clear();
-      _instituteNameErrors.clear();
-      _instituteCountryErrors.clear();
-      _instituteStateErrors.clear();
-      _instituteCityErrors.clear();
-      _startDateErrors.clear();
-      _endDateErrors.clear();
-      _dateValidationErrors.clear();
 
       _addEducationEntry(); // Initialize with one education entry
     });
@@ -120,7 +100,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.114:4000/api/getCVEducation?accountID=$accountID'),
+            'http://192.168.1.9:4000/api/getCVEducation?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -194,16 +174,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _startDateList.add('');
       _endDateList.add('');
       _isPublicList.add(true);
-
-      _levelOfEducationErrors.add(null);
-      _fieldOfStudyErrors.add(null);
-      _instituteNameErrors.add(null);
-      _instituteCountryErrors.add(null);
-      _instituteStateErrors.add(null);
-      _instituteCityErrors.add(null);
-      _startDateErrors.add(null);
-      _endDateErrors.add(null);
-      _dateValidationErrors.add(null); // Add this line
     });
   }
 
@@ -211,68 +181,10 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     final accountID = await _getAccountID();
     if (accountID == null) return;
     if (!mounted) return;
-
-    bool hasError = false;
-
-    // Validate input fields for each education entry
-    for (int i = 0; i < _educationEntries.length; i++) {
-      _levelOfEducationErrors[i] = _selectedLevels[i] == null
-          ? 'Level of Education cannot be empty'
-          : null;
-      _fieldOfStudyErrors[i] = _fieldOfStudyControllers[i].text.isEmpty
-          ? 'Field of Study cannot be empty'
-          : null;
-      _instituteNameErrors[i] = _instituteNameControllers[i].text.isEmpty
-          ? 'Institute Name cannot be empty'
-          : null;
-      _instituteCountryErrors[i] = _instituteCountryControllers[i].text.isEmpty
-          ? 'Country cannot be empty'
-          : null;
-      _instituteStateErrors[i] = _instituteStateControllers[i].text.isEmpty
-          ? 'State cannot be empty'
-          : null;
-      _instituteCityErrors[i] = _instituteCityControllers[i].text.isEmpty
-          ? 'City cannot be empty'
-          : null;
-      _startDateErrors[i] =
-          _startDateList[i].isEmpty ? 'Start Date cannot be empty' : null;
-      _endDateErrors[i] =
-          _endDateList[i].isEmpty ? 'End Date cannot be empty' : null;
-
-      // Validate date format
-      if (_startDateList[i].isNotEmpty && _endDateList[i].isNotEmpty) {
-        if (_startDateList[i].compareTo(_endDateList[i]) > 0) {
-          _dateValidationErrors[i] = 'Invalid Date';
-          hasError = true;
-        } else {
-          _dateValidationErrors[i] = null; // Clear previous error if valid
-        }
-      }
-
-      // Check if there are any errors
-      if (_levelOfEducationErrors[i] != null ||
-          _fieldOfStudyErrors[i] != null ||
-          _instituteNameErrors[i] != null ||
-          _instituteCountryErrors[i] != null ||
-          _instituteStateErrors[i] != null ||
-          _instituteCityErrors[i] != null ||
-          _startDateErrors[i] != null ||
-          _endDateErrors[i] != null ||
-          _dateValidationErrors[i] != null) {
-        hasError = true;
-      }
-    }
-
-    // Update the UI to reflect validation errors
-    setState(() {});
-
-    // Stop the save process if there are validation errors
-    if (hasError) return;
-
-    // Proceed with saving the entries if no errors
     List<Map<String, dynamic>> newEducationEntries = [];
     List<Map<String, dynamic>> existingEducationEntries = [];
     List<int> newEntryIndexes = [];
+    bool hasError = false;
     Set<String> entrySet = {};
 
     for (int i = 0; i < _educationEntries.length; i++) {
@@ -281,13 +193,29 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       String instituteName = _instituteNameControllers[i].text.toUpperCase();
       String uniqueKey = '$level-$fieldOfStudy-$instituteName';
 
-      // Ensure there are no duplicate entries
+      if (level.isEmpty ||
+          fieldOfStudy.isEmpty ||
+          instituteName.isEmpty ||
+          _instituteCountryControllers[i].text.isEmpty ||
+          _instituteStateControllers[i].text.isEmpty ||
+          _instituteCityControllers[i].text.isEmpty ||
+          _startDateList[i].isEmpty ||
+          _endDateList[i].isEmpty) {
+        hasError = true;
+        showErrorDialog(
+          context,
+          'Please fill in all the fields for education entry ${i + 1}.',
+        );
+        break;
+      }
+
       if (entrySet.contains(uniqueKey)) {
+        hasError = true;
         showErrorDialog(
           context,
           'Duplicate entry for education entry ${i + 1}. Please modify or remove it.',
         );
-        return;
+        break;
       }
 
       entrySet.add(uniqueKey);
@@ -305,7 +233,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         'isPublic': _isPublicList[i],
       };
 
-      // Separate new entries from existing ones for processing
       if (_educationEntries[i]['eduBacID'] == null) {
         newEducationEntries.add(entry);
         newEntryIndexes.add(i);
@@ -314,12 +241,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       }
     }
 
-    // Show loading state
+    if (hasError) return;
+
     setState(() {
       _isLoading = true;
     });
 
-    // Prepare request body
     final body = jsonEncode({
       'accountID': accountID,
       'newEducationEntries': newEducationEntries,
@@ -327,20 +254,16 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     });
 
     try {
-      // Make the request to save education entries
       final response = await http.post(
-        Uri.parse('http://172.16.20.114:4000/api/saveCVEducation'),
+        Uri.parse('http://192.168.1.9:4000/api/saveCVEducation'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
       devtools.log(response.statusCode.toString());
-
-      // Handle success response
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         List updatedEducations = responseData['newEducationsWithID'];
 
-        // Update EduBacID for new entries
         for (int i = 0; i < newEntryIndexes.length; i++) {
           int index = newEntryIndexes[i];
           _educationEntries[index]['eduBacID'] =
@@ -350,20 +273,17 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
 
         devtools.log('Education entries saved successfully.');
         setState(() {
-          _isEditing = false; // Exit edit mode after saving
+          _isEditing = false;
         });
       } else {
-        // Handle failure response
         devtools.log(
             'Failed to save education entries. Status code: ${response.statusCode}');
         showErrorDialog(context, 'Failed to save education entries');
       }
     } catch (error) {
-      // Handle any errors that occurred during the save process
       devtools.log('Error saving education entries: $error');
       showErrorDialog(context, 'Error saving education entries');
     } finally {
-      // Stop the loading state
       setState(() {
         _isLoading = false;
       });
@@ -376,12 +296,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     if (eduBacID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://172.16.20.114:4000/api/deleteCVEducation'),
+          Uri.parse('http://192.168.1.9:4000/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://172.16.20.114:3010/api/deleteCVEducation'),
+          Uri.parse('http://192.168.1.9:3010/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
@@ -442,29 +362,9 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         // Perform save operation here
         await _saveEducationEntries();
 
-        // Check if there are any validation errors
-        bool hasError = false;
-        for (int i = 0; i < _educationEntries.length; i++) {
-          if (_levelOfEducationErrors[i] != null ||
-              _fieldOfStudyErrors[i] != null ||
-              _instituteNameErrors[i] != null ||
-              _instituteCountryErrors[i] != null ||
-              _instituteStateErrors[i] != null ||
-              _instituteCityErrors[i] != null ||
-              _startDateErrors[i] != null ||
-              _endDateErrors[i] != null ||
-              _dateValidationErrors[i] != null) {
-            hasError = true;
-            break;
-          }
-        }
-
-        // Only exit edit mode if there are no errors
-        if (!hasError) {
-          setState(() {
-            _isEditing = false; // End edit mode after saving if no errors
-          });
-        }
+        setState(() {
+          _isEditing = false; // End edit mode after saving
+        });
       } catch (error) {
         // Handle any errors during save
         devtools.log('Error saving data: $error');
@@ -548,24 +448,21 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Level of Education',
             _educationLevels,
             index,
-            _isEditing,
-            _levelOfEducationErrors[index], // Pass error for level of education
+            _isEditing, // Disable if entry exists
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Field of Study',
             _fieldOfStudyControllers[index],
-            _isEditing,
-            _fieldOfStudyErrors[index],
+            _isEditing, // Disable if entry exists
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
             context,
             'Institute Name',
             _instituteNameControllers[index],
-            _isEditing,
-            _instituteNameErrors[index],
+            _isEditing, // Disable if entry exists
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
@@ -573,7 +470,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Institute Country',
             _instituteCountryControllers[index],
             _isEditing,
-            _instituteCountryErrors[index],
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
@@ -581,7 +477,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Institute State',
             _instituteStateControllers[index],
             _isEditing,
-            _instituteStateErrors[index],
           ),
           const SizedBox(height: 15.0),
           _buildInputField(
@@ -589,113 +484,92 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             'Institute City',
             _instituteCityControllers[index],
             _isEditing,
-            _instituteCityErrors[index],
           ),
           const SizedBox(height: 15.0),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              // Start Date Section
-              const Text(
-                'Start Date',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.0,
-                  color: Color(0xFF171B63),
-                ),
-              ),
-              const SizedBox(height: 8.0),
-              GestureDetector(
-                onTap: () =>
-                    _isEditing ? _selectMonthYear(context, index, true) : null,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 15.0, vertical: 15.0),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                  child: Text(
-                    _startDateList[index],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF171B63),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Start Date',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                        color: Color(0xFF171B63),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              if (_startDateErrors[index] != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 5.0),
-                  child: Text(
-                    _startDateErrors[index]!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
-                  ),
-                ),
-              if (_dateValidationErrors[index] !=
-                  null) // Display date validation error
-                Padding(
-                  padding: const EdgeInsets.only(top: 5.0),
-                  child: Text(
-                    _dateValidationErrors[index]!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
-                  ),
-                ),
-              const SizedBox(height: 15.0), // Space below start date
-
-              // End Date Section
-              const Text(
-                'End Date',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.0,
-                  color: Color(0xFF171B63),
-                ),
-              ),
-              const SizedBox(height: 8.0),
-              GestureDetector(
-                onTap: () =>
-                    _isEditing ? _selectMonthYear(context, index, false) : null,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 15.0, vertical: 15.0),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                  child: Text(
-                    _endDateList[index],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF171B63),
+                    const SizedBox(height: 8.0),
+                    GestureDetector(
+                      onTap: () => _isEditing
+                          ? _selectMonthYear(context, index, true)
+                          : null,
+                      child: Container(
+                        width: 150.0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 15.0, vertical: 15.0),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Text(
+                          _startDateList[index],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF171B63),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 15.0),
+                  ],
                 ),
               ),
-              if (_endDateErrors[index] != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 5.0),
-                  child: Text(
-                    _endDateErrors[index]!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
-                  ),
+              const SizedBox(width: 15.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'End Date',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                        color: Color(0xFF171B63),
+                      ),
+                    ),
+                    const SizedBox(height: 8.0),
+                    GestureDetector(
+                      onTap: () => _isEditing
+                          ? _selectMonthYear(context, index, false)
+                          : null,
+                      child: Container(
+                        width: 150.0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 15.0, vertical: 15.0),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Text(
+                          _endDateList[index],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF171B63),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15.0),
+                  ],
                 ),
-
-              if (_dateValidationErrors[index] != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 5.0),
-                  child: Text(
-                    _dateValidationErrors[index]!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
-                  ),
-                ),
-              const SizedBox(height: 15.0), // Space below end date
+              ),
             ],
           ),
+          const SizedBox(height: 15.0),
           if (_isEditing)
             Row(
               children: [
@@ -716,7 +590,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   }
 
   Widget _buildDropdownField(BuildContext context, String labelText,
-      List<String> items, int index, bool isEditable, String? errorMessage) {
+      List<String> items, int index, bool isEditable) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -747,7 +621,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                   BorderSide(color: isEditable ? Colors.grey : Colors.black12),
               borderRadius: BorderRadius.circular(10.0),
             ),
-            errorText: errorMessage, // Display the error message if any
           ),
           isExpanded: true,
         ),
@@ -756,7 +629,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   }
 
   Widget _buildInputField(BuildContext context, String labelText,
-      TextEditingController controller, bool isEditing, String? errorMessage) {
+      TextEditingController controller, bool isEditing,
+      {bool isError = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -774,7 +648,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
               borderSide: BorderSide(
-                color: errorMessage != null ? Colors.red : Colors.grey,
+                color: isError ? Colors.red : Colors.grey,
                 width: 2.0,
               ),
             ),
@@ -782,14 +656,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
           ),
         ),
-        if (errorMessage != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 5.0),
-            child: Text(
-              errorMessage,
-              style: const TextStyle(color: Colors.red, fontSize: 12.0),
-            ),
-          ),
       ],
     );
   }

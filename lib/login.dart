@@ -65,6 +65,7 @@ class _LoginViewState extends State<LoginView> {
 
       final user = AuthService.mssql().currentUser;
       devtools.log(user.toString());
+      if (!mounted) return;
       if (user != null) {
         devtools.log('Login successful');
         if (!mounted) return;

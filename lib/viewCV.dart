@@ -12,7 +12,8 @@ class ViewCV extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.of(context).pop(); // Navigate back when the button is pressed
+            Navigator.of(context)
+                .pop(); // Navigate back when the button is pressed
           },
         ),
         title: const Text('View CV'),
@@ -121,9 +122,28 @@ class ViewCV extends StatelessWidget {
         return _buildInfoBox([
           'Skill: ${skill['SoftHighlight']}',
           'Description: ${skill['SoftDescription']}',
+          'Level: ${_mapSoftLevelToText(skill['SoftLevel'])}', // Add skill level display
         ]);
       }).toList(),
     );
+  }
+
+  // Helper function to map SoftLevel to human-readable text
+  String _mapSoftLevelToText(int level) {
+    switch (level) {
+      case 1:
+        return 'Beginner';
+      case 2:
+        return 'Intermediate';
+      case 3:
+        return 'Advanced';
+      case 4:
+        return 'Expert';
+      case 5:
+        return 'Master';
+      default:
+        return 'Unknown Level';
+    }
   }
 
   Widget _buildInfoBox(List<String> info) {

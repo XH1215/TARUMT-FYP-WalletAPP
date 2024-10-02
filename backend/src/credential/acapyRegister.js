@@ -2,7 +2,7 @@ const axios = require('axios');
 const sql = require('mssql');
 
 // ACA-Py API endpoint configuration
-const acaPyBaseUrl = 'http://172.16.20.114:7011';  // Issuer API URL || holder is 7011
+const acaPyBaseUrl = 'http://192.168.1.9:7011';  // Issuer API URL || holder is 7011
 
 //-----------------------------------------------------------------------------//
 // Main function to create wallet and DID
@@ -69,7 +69,7 @@ async function storeWalletData(email, walletID, publicDid) {
 async function registerDIDatVon(DID, Verkey) {
     try {
         await axios.post(
-            `http://172.16.20.114:9000/register`,
+            `http://192.168.1.9:9000/register`,
             {
                 did: DID,
                 verkey: Verkey,

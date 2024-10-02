@@ -1,7 +1,7 @@
 const axios = require('axios');
 const sql = require('mssql');
 const dbConfig = require('../config/dbConfigWallet');  // Database configuration
-const acaPyBaseUrl = 'http://172.16.20.114:7011';
+const acaPyBaseUrl = 'http://192.168.1.9:7011';
 
 // Initialize SQL connection pool
 let poolPromise = sql.connect(dbConfig)
@@ -43,7 +43,7 @@ async function receiveOffer(req, res) {
 
         // Fetch all credential offers from the ACA-Py agent (holder's side)
         const recordsResponse = await axios.get(
-            'http://172.16.20.114:7011/issue-credential-2.0/records',
+            'http://192.168.1.9:7011/issue-credential-2.0/records',
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,  // Use the retrieved JWT token
@@ -76,7 +76,7 @@ console.log("\n\n\n\n\n\n\n hi \n\n\n\n\n\n");
 
         // Step 1: Accept the offer
         const acceptResponse = await axios.post(
-            `http://172.16.20.114:7011/issue-credential-2.0/records/${credExId}/send-request`,
+            `http://192.168.1.9:7011/issue-credential-2.0/records/${credExId}/send-request`,
             {},
             {
                 headers: {
@@ -87,7 +87,7 @@ console.log("\n\n\n\n\n\n\n hi \n\n\n\n\n\n");
         );
         console.log(acceptResponse.data);
 
-        const requestUrl = `http://172.16.20.114:7011/issue-credential-2.0/records/${credExId}/store`;
+        const requestUrl = `http://192.168.1.9:7011/issue-credential-2.0/records/${credExId}/store`;
         console.log(requestUrl);
 
         // Wait for 5 seconds
@@ -112,7 +112,7 @@ console.log("\n\n\n\n\n\n\n hi \n\n\n\n\n\n");
 
         // After fetching the credential records
         const credentialRecordResponse = await axios.get(
-            `http://172.16.20.114:7011/credentials`,
+            `http://192.168.1.9:7011/credentials`,
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,

@@ -68,7 +68,9 @@ class _qrViewState extends State<qrView> {
 
     try {
       await _authProvider.deleteQRCode(qrId);
+      if (!mounted) return;
       await _fetchQRCodes(); // Refresh the list after deletion
+      if (!mounted) return;
     } catch (e) {
       devtools.log('Error deleting QR Code: $e');
     } finally {
@@ -196,6 +198,7 @@ class _qrViewState extends State<qrView> {
     // Check if a QR code was generated and refresh the list if needed
     if (result == 'qr_generated') {
       _fetchQRCodes(); // Refresh the QR code list
+      if (!mounted) return;
     }
   }
 
