@@ -32,7 +32,7 @@ class _ViewStoredCredentialScreenState
       try {
         devtools.log("Fetching stored credentials... " + user.email);
         final response = await http.post(
-          Uri.parse('http://172.16.20.168:3000/api/receiveExistedCredential'),
+          Uri.parse('http://172.16.20.114:4000/api/receiveExistedCredential'),
           headers: {
             'Content-Type': 'application/json',
           },
@@ -82,11 +82,9 @@ class _ViewStoredCredentialScreenState
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'View Stored Credentials',
-        ),
+        title: Text('View Stored Credentials',
+            style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Center(
         child: isLoading
@@ -146,5 +144,17 @@ class _ViewStoredCredentialScreenState
               ),
       ),
     );
+  }
+}
+
+class AppWidget {
+  static TextStyle headlineTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 20.0, fontWeight: FontWeight.bold);
+  }
+
+  static TextStyle semiBoldTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 16.0, fontWeight: FontWeight.w600);
   }
 }

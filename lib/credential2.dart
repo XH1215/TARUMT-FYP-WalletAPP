@@ -39,9 +39,9 @@ class Credential2State extends State<Credential2> {
       if (accountID != null) {
         final response = await http.get(
           Uri.parse(
-              'http://172.16.20.168:3000/api/getCertifications?accountID=$accountID'),
+              'http://172.16.20.114:4000/api/getCertifications?accountID=$accountID'),
         );
-
+        if(!mounted) return;
         if (response.statusCode == 200) {
           final Map<String, dynamic> data = json.decode(response.body);
           final List<dynamic> certifications = data['certifications'];
@@ -90,7 +90,7 @@ class Credential2State extends State<Credential2> {
         certificationData['isPublic'] = isPublic;
         devtools.log(certificationData.toString());
         final response = await http.post(
-          Uri.parse('http://172.16.20.168:3000/api/updateCertificationStatus'),
+          Uri.parse('http://172.16.20.114:4000/api/updateCertificationStatus'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'accountID': accountID,
@@ -183,7 +183,7 @@ class Credential2State extends State<Credential2> {
                           ),
                           const SizedBox(height: 15.0),
                           Text(
-                            'Certification Type: ${certification['Certification Type'] ?? 'N/A'}',
+                            'Certification Type: ${certification['CertificationType'] ?? 'N/A'}',
                             style: const TextStyle(fontSize: 16.0),
                           ),
                           const SizedBox(height: 15.0),

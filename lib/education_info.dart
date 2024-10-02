@@ -55,7 +55,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   bool _isEditing = false;
   bool _isLoading = false;
 
-  //here
   final List<String?> _levelOfEducationErrors = [];
   final List<String?> _fieldOfStudyErrors = [];
   final List<String?> _instituteNameErrors = [];
@@ -64,6 +63,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   final List<String?> _instituteCityErrors = [];
   final List<String?> _startDateErrors = [];
   final List<String?> _endDateErrors = [];
+  final List<String?> _dateValidationErrors = [];
 
   @override
   void initState() {
@@ -72,7 +72,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     _fetchEducationData();
   }
 
-  //here
   void _initializeEducationEntries() {
     setState(() {
       _educationEntries.clear();
@@ -94,6 +93,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _instituteCityErrors.clear();
       _startDateErrors.clear();
       _endDateErrors.clear();
+      _dateValidationErrors.clear();
 
       _addEducationEntry(); // Initialize with one education entry
     });
@@ -120,7 +120,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.168:3000/api/getCVEducation?accountID=$accountID'),
+            'http://172.16.20.114:4000/api/getCVEducation?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -171,7 +171,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     }
   }
 
-  //here
   void _addEducationEntry() {
     setState(() {
       _educationEntries.add({
@@ -204,6 +203,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _instituteCityErrors.add(null);
       _startDateErrors.add(null);
       _endDateErrors.add(null);
+      _dateValidationErrors.add(null); // Add this line
     });
   }
 
@@ -215,7 +215,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     bool hasError = false;
 
     // Validate input fields for each education entry
-    //here
     for (int i = 0; i < _educationEntries.length; i++) {
       _levelOfEducationErrors[i] = _selectedLevels[i] == null
           ? 'Level of Education cannot be empty'
@@ -240,6 +239,16 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       _endDateErrors[i] =
           _endDateList[i].isEmpty ? 'End Date cannot be empty' : null;
 
+      // Validate date format
+      if (_startDateList[i].isNotEmpty && _endDateList[i].isNotEmpty) {
+        if (_startDateList[i].compareTo(_endDateList[i]) > 0) {
+          _dateValidationErrors[i] = 'Invalid Date';
+          hasError = true;
+        } else {
+          _dateValidationErrors[i] = null; // Clear previous error if valid
+        }
+      }
+
       // Check if there are any errors
       if (_levelOfEducationErrors[i] != null ||
           _fieldOfStudyErrors[i] != null ||
@@ -248,7 +257,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
           _instituteStateErrors[i] != null ||
           _instituteCityErrors[i] != null ||
           _startDateErrors[i] != null ||
-          _endDateErrors[i] != null) {
+          _endDateErrors[i] != null ||
+          _dateValidationErrors[i] != null) {
         hasError = true;
       }
     }
@@ -319,7 +329,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       // Make the request to save education entries
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/saveCVEducation'),
+        Uri.parse('http://172.16.20.114:4000/api/saveCVEducation'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -366,13 +376,18 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     if (eduBacID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://172.16.20.168:3000/api/deleteCVEducation'),
+          Uri.parse('http://172.16.20.114:4000/api/deleteCVEducation'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'EduBacID': eduBacID}),
+        );
+        final response2 = await http.post(
+          Uri.parse('http://172.16.20.114:3010/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
 
-
-        if (response.statusCode == 200) {
+        if (response.statusCode == 200 && response2.statusCode == 200 ||
+            response2.statusCode == 201) {
           setState(() {
             _educationEntries.removeAt(index);
             _selectedLevels.removeAt(index);
@@ -437,7 +452,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
               _instituteStateErrors[i] != null ||
               _instituteCityErrors[i] != null ||
               _startDateErrors[i] != null ||
-              _endDateErrors[i] != null) {
+              _endDateErrors[i] != null ||
+              _dateValidationErrors[i] != null) {
             hasError = true;
             break;
           }
@@ -493,7 +509,6 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     }
   }
 
-  //here
   Widget _buildInputSection(BuildContext context, int index) {
     bool isExistingEntry = _educationEntries[index]['eduBacID'] != null;
 
@@ -577,105 +592,108 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
             _instituteCityErrors[index],
           ),
           const SizedBox(height: 15.0),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Start Date',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.0,
-                        color: Color(0xFF171B63),
-                      ),
-                    ),
-                    const SizedBox(height: 8.0),
-                    GestureDetector(
-                      onTap: () => _isEditing
-                          ? _selectMonthYear(context, index, true)
-                          : null,
-                      child: Container(
-                        width: 150.0,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 15.0),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: Text(
-                          _startDateList[index],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF171B63),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_startDateErrors[index] != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5.0),
-                        child: Text(
-                          _startDateErrors[index]!,
-                          style: const TextStyle(
-                              color: Colors.red, fontSize: 12.0),
-                        ),
-                      ),
-                    const SizedBox(height: 15.0),
-                  ],
+              // Start Date Section
+              const Text(
+                'Start Date',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.0,
+                  color: Color(0xFF171B63),
                 ),
               ),
-              const SizedBox(width: 15.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'End Date',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.0,
-                        color: Color(0xFF171B63),
-                      ),
+              const SizedBox(height: 8.0),
+              GestureDetector(
+                onTap: () =>
+                    _isEditing ? _selectMonthYear(context, index, true) : null,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 15.0, vertical: 15.0),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Text(
+                    _startDateList[index],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF171B63),
                     ),
-                    const SizedBox(height: 8.0),
-                    GestureDetector(
-                      onTap: () => _isEditing
-                          ? _selectMonthYear(context, index, false)
-                          : null,
-                      child: Container(
-                        width: 150.0,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 15.0),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: Text(
-                          _endDateList[index],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF171B63),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_endDateErrors[index] != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5.0),
-                        child: Text(
-                          _endDateErrors[index]!,
-                          style: const TextStyle(
-                              color: Colors.red, fontSize: 12.0),
-                        ),
-                      ),
-                    const SizedBox(height: 15.0),
-                  ],
+                  ),
                 ),
               ),
+              if (_startDateErrors[index] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5.0),
+                  child: Text(
+                    _startDateErrors[index]!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
+                  ),
+                ),
+              if (_dateValidationErrors[index] !=
+                  null) // Display date validation error
+                Padding(
+                  padding: const EdgeInsets.only(top: 5.0),
+                  child: Text(
+                    _dateValidationErrors[index]!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
+                  ),
+                ),
+              const SizedBox(height: 15.0), // Space below start date
+
+              // End Date Section
+              const Text(
+                'End Date',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.0,
+                  color: Color(0xFF171B63),
+                ),
+              ),
+              const SizedBox(height: 8.0),
+              GestureDetector(
+                onTap: () =>
+                    _isEditing ? _selectMonthYear(context, index, false) : null,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 15.0, vertical: 15.0),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Text(
+                    _endDateList[index],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF171B63),
+                    ),
+                  ),
+                ),
+              ),
+              if (_endDateErrors[index] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5.0),
+                  child: Text(
+                    _endDateErrors[index]!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
+                  ),
+                ),
+
+              if (_dateValidationErrors[index] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5.0),
+                  child: Text(
+                    _dateValidationErrors[index]!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
+                  ),
+                ),
+              const SizedBox(height: 15.0), // Space below end date
             ],
           ),
           if (_isEditing)

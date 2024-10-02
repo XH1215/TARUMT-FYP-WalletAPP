@@ -46,6 +46,17 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   List<TextEditingController> _otherIndustryControllers = [];
   List<bool> _isPublicControllers = [];
 
+  final List<String?> _jobTitleErrors = [];
+  final List<String?> _companyNameErrors = [];
+  final List<String?> _countryErrors = [];
+  final List<String?> _stateErrors = [];
+  final List<String?> _cityErrors = [];
+  final List<String?> _descriptionErrors = [];
+  final List<String?> _startDateErrors = [];
+  final List<String?> _endDateErrors = [];
+  final List<String?> _industryErrors = [];
+  final List<String?> _dateValidationErrors = [];
+
   final List<String> _industries = [
     'Accounting',
     'Finance',
@@ -77,6 +88,19 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       _endDateControllers.clear();
       _otherIndustryControllers.clear();
       _isPublicControllers.clear();
+
+      // Initialize error lists
+      _jobTitleErrors.clear();
+      _companyNameErrors.clear();
+      _countryErrors.clear();
+      _stateErrors.clear();
+      _cityErrors.clear();
+      _descriptionErrors.clear();
+      _startDateErrors.clear();
+      _endDateErrors.clear();
+      _industryErrors.clear();
+      _dateValidationErrors.clear();
+
       _addWorkExperienceEntry();
     });
   }
@@ -101,8 +125,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse(
-            'http://172.16.20.168:3000/api/getCVWork?accountID=$accountID'),
+        Uri.parse('http://172.16.20.114:4000/api/getCVWork?accountID=$accountID'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -154,11 +177,10 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           text: _workExperienceEntries[index]['company_name']),
     );
 
-    // Ensure the selected industries and other industry controllers are initialized correctly
+    // Initialize the selected industries and other industry controllers
     devtools.log('Initializing controllers...');
     devtools.log('Work Experience Entries: $_workExperienceEntries');
 
-    // Initialize the selected industries and other industry controllers
     _selectedIndustries = [];
     _otherIndustryControllers = [];
 
@@ -225,67 +247,119 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     );
   }
 
+  // Function to validate date format
+  bool _isDateFormatValid(String date) {
+    final RegExp regex = RegExp(r'^\d{4}-\d{2}$'); // Format: YYYY-MM
+    return regex.hasMatch(date);
+  }
+
   Future<void> _saveWorkEntries() async {
     final accountID = await _getAccountID();
     if (accountID == null) return;
     if (!mounted) return;
 
+    bool hasError = false;
+
+    setState(() {
+      for (int i = 0; i < _workExperienceEntries.length; i++) {
+        // Validate empty fields
+        _jobTitleErrors[i] = _jobTitleControllers[i].text.isEmpty
+            ? 'Job title cannot be empty'
+            : null;
+        _companyNameErrors[i] = _companyNameControllers[i].text.isEmpty
+            ? 'Company name cannot be empty'
+            : null;
+        _countryErrors[i] = _countryControllers[i].text.isEmpty
+            ? 'Country cannot be empty'
+            : null;
+        _stateErrors[i] =
+            _stateControllers[i].text.isEmpty ? 'State cannot be empty' : null;
+        _cityErrors[i] =
+            _cityControllers[i].text.isEmpty ? 'City cannot be empty' : null;
+        _descriptionErrors[i] = _descriptionControllers[i].text.isEmpty
+            ? 'Description cannot be empty'
+            : null;
+
+        // Validate start and end date fields
+        _startDateErrors[i] = _startDateControllers[i].text.isEmpty
+            ? 'Start date cannot be empty'
+            : null;
+        _endDateErrors[i] = _endDateControllers[i].text.isEmpty
+            ? 'End date cannot be empty'
+            : null;
+
+        // Validate date format
+        String startDateText = _startDateControllers[i].text.trim();
+        String endDateText = _endDateControllers[i].text.trim();
+
+        if (!_isDateFormatValid(startDateText)) {
+          _startDateErrors[i];
+          hasError = true;
+        } else {
+          _startDateErrors[i] = null; // Clear previous error if valid
+        }
+
+        if (!_isDateFormatValid(endDateText)) {
+          _endDateErrors[i];
+          hasError = true;
+        } else {
+          _endDateErrors[i] = null; // Clear previous error if valid
+        }
+
+        // Check if both start and end dates are not empty before validating
+        if (startDateText.isNotEmpty && endDateText.isNotEmpty) {
+          // Validate that the start date is not later than the end date
+          if (startDateText.compareTo(endDateText) > 0) {
+            _dateValidationErrors[i] = 'Invalid Date';
+            hasError = true;
+          } else {
+            _dateValidationErrors[i] = null; // Clear previous error if valid
+          }
+        }
+
+        // Validate industry
+        _industryErrors[i] = (_selectedIndustries[i] == 'OTHERS' &&
+                _otherIndustryControllers[i].text.isEmpty)
+            ? 'Industry cannot be empty'
+            : null;
+
+        // If any error exists, mark hasError as true
+        if (_jobTitleErrors[i] != null ||
+            _companyNameErrors[i] != null ||
+            _countryErrors[i] != null ||
+            _stateErrors[i] != null ||
+            _cityErrors[i] != null ||
+            _descriptionErrors[i] != null ||
+            _startDateErrors[i] != null ||
+            _endDateErrors[i] != null ||
+            _industryErrors[i] != null ||
+            _dateValidationErrors[i] != null) {
+          hasError = true;
+        }
+      }
+
+      // If there are any errors, return and stop the save process
+      if (hasError) return;
+    });
+
+    // If no errors, proceed with saving the work entries
     List<Map<String, dynamic>> newWorkEntries = [];
     List<Map<String, dynamic>> existingWorkEntries = [];
     List<int> newEntryIndexes = [];
-
-    bool hasError = false;
     Set<String> entrySet = {};
 
     for (int i = 0; i < _workExperienceEntries.length; i++) {
       String jobTitle = _jobTitleControllers[i].text.trim().toUpperCase();
       String companyName = _companyNameControllers[i].text.trim().toUpperCase();
+
+      if (jobTitle.isEmpty || companyName.isEmpty) continue;
+
       String industry = _selectedIndustries[i] == 'OTHERS'
           ? _otherIndustryControllers[i].text.trim().toUpperCase()
           : _selectedIndustries[i]?.toUpperCase() ?? '';
 
       // Create a unique key for duplicate checking based on job title and company name
       String uniqueKey = '$jobTitle-$companyName';
-
-      if (jobTitle.isEmpty ||
-          companyName.isEmpty ||
-          industry.isEmpty ||
-          _countryControllers[i].text.isEmpty ||
-          _stateControllers[i].text.isEmpty ||
-          _cityControllers[i].text.isEmpty ||
-          _descriptionControllers[i].text.isEmpty ||
-          _startDateControllers[i].text.isEmpty ||
-          _endDateControllers[i].text.isEmpty) {
-        hasError = true;
-        showErrorDialog(
-            context, 'Please fill in all the fields for entry ${i + 1}.');
-        break; // Stop further execution if there's an error
-      }
-
-      // Check for duplicate job title and company name
-      if (entrySet.contains(uniqueKey)) {
-        hasError = true;
-        showErrorDialog(context,
-            'Duplicate entry for work entry ${i + 1}. Please modify or remove it.');
-        break; // Stop further execution if there's a duplicate
-      }
-
-      // Add the unique key to the set to track this entry
-      entrySet.add(uniqueKey);
-
-      // Date validation
-      // Parse start date and end date for validation
-      DateTime startDate =
-          DateTime.tryParse(_startDateControllers[i].text) ?? DateTime.now();
-      DateTime endDate =
-          DateTime.tryParse(_endDateControllers[i].text) ?? DateTime.now();
-      // Validate that the start date is not later than the end date
-      if (startDate.isAfter(endDate)) {
-        hasError = true;
-        showErrorDialog(context,
-            'Start date cannot be later than end date for entry ${i + 1}.');
-        break; // Stop further execution if there's a date validation error
-      }
 
       // Prepare the work entry for saving
       final entry = {
@@ -302,6 +376,16 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         'isPublic': _isPublicControllers[i],
       };
 
+      // Check for duplicate job title and company name
+      if (entrySet.contains(uniqueKey)) {
+        hasError = true;
+        showErrorDialog(context,
+            'Duplicate entry for work entry ${i + 1}. Please modify or remove it.');
+        return;
+      }
+
+      entrySet.add(uniqueKey);
+
       if (_workExperienceEntries[i]['WorkExpID'] == null) {
         newWorkEntries.add(entry);
         newEntryIndexes.add(i); // Track the index of the new entry
@@ -312,10 +396,12 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
     if (hasError) return;
 
+    // Show loading state
     setState(() {
       _isLoading = true;
     });
 
+    // Prepare request body
     final body = jsonEncode({
       'accountID': accountID,
       'newWorkEntries': newWorkEntries,
@@ -323,8 +409,9 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     });
 
     try {
+      // Make the request to save work entries
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/saveCVWork'),
+        Uri.parse('http://172.16.20.114:4000/api/saveCVWork'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -337,7 +424,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         for (int i = 0; i < newEntryIndexes.length; i++) {
           int index = newEntryIndexes[i];
           _workExperienceEntries[index]['WorkExpID'] =
-              updatedWorkEntries[i]['WorkExpID']; // Update the new WorkExpID
+              updatedWorkEntries[i]['WorkExpID'];
         }
 
         devtools.log('Work entries saved successfully.');
@@ -370,7 +457,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         await _saveWorkEntries();
 
         setState(() {
-          _isEditing = false; // End edit mode after saving
+          _isEditing = true; // End edit mode after saving
         });
       } catch (error) {
         // Handle any errors during save
@@ -413,6 +500,18 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       _endDateControllers.add(TextEditingController());
       _otherIndustryControllers.add(TextEditingController());
       _isPublicControllers.add(true);
+
+      // Add null entries to the error lists to maintain synchronization
+      _jobTitleErrors.add(null);
+      _companyNameErrors.add(null);
+      _countryErrors.add(null);
+      _stateErrors.add(null);
+      _cityErrors.add(null);
+      _descriptionErrors.add(null);
+      _startDateErrors.add(null);
+      _endDateErrors.add(null);
+      _industryErrors.add(null);
+      _dateValidationErrors.add(null);
     });
   }
 
@@ -422,13 +521,20 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     if (WorkExpID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://172.16.20.168:3000/api/deleteCVWork'),
+          Uri.parse('http://172.16.20.114:4000/api/deleteCVWork'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'WorkExpID': WorkExpID}),
+        );
+
+        final response2 = await http.post(
+          Uri.parse('http://172.16.20.114:3010/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );
         if (!mounted) return;
 
-        if (response.statusCode == 200) {
+        if (response.statusCode == 200 &&
+            (response2.statusCode == 200 || response2.statusCode == 201)) {
           setState(() {
             _workExperienceEntries.removeAt(index);
             _jobTitleControllers.removeAt(index);
@@ -487,9 +593,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
             Text('Work Experience', style: AppWidget.headlineTextFieldStyle()),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(15.0),
               child: Column(
@@ -509,7 +613,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
                       alignment: Alignment.centerRight,
                       child: ElevatedButton(
                         onPressed: _isLoading
-                            ? null // Disable button when loading
+                            ? null
                             : () {
                                 setState(() {
                                   _addWorkExperienceEntry();
@@ -538,9 +642,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             ElevatedButton(
-              onPressed: _isLoading
-                  ? null // Disable button when loading
-                  : _toggleEditMode,
+              onPressed: _isLoading ? null : _toggleEditMode,
               style: ElevatedButton.styleFrom(
                 backgroundColor:
                     _isLoading ? Colors.grey : const Color(0xFF171B63),
@@ -562,7 +664,6 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Widget _buildInputSection(BuildContext context, int index) {
-    // If WorkExpID is not null, the entry is already stored in the database
     bool isExistingEntry = _workExperienceEntries[index]['WorkExpID'] != null;
 
     return Container(
@@ -596,80 +697,104 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
               ],
             ),
           ),
-          _buildInputField(
-              context, 'Job Title', _jobTitleControllers[index], _isEditing),
+          _buildInputField(context, 'Job Title', _jobTitleControllers[index],
+              _isEditing, _jobTitleErrors[index]),
           const SizedBox(height: 15.0),
-          _buildInputField(context, 'Company Name',
-              _companyNameControllers[index], _isEditing),
+          _buildInputField(
+              context,
+              'Company Name',
+              _companyNameControllers[index],
+              _isEditing,
+              _companyNameErrors[index]),
           const SizedBox(height: 15.0),
           _buildDropdownField(context, 'Industry', _industries, index,
               editable: _isEditing),
           const SizedBox(height: 15.0),
-          _buildInputField(
-              context, 'Country', _countryControllers[index], _isEditing),
+          _buildInputField(context, 'Country', _countryControllers[index],
+              _isEditing, _countryErrors[index]),
+          const SizedBox(height: 15.0),
+          _buildInputField(context, 'State', _stateControllers[index],
+              _isEditing, _stateErrors[index]),
+          const SizedBox(height: 15.0),
+          _buildInputField(context, 'City', _cityControllers[index], _isEditing,
+              _cityErrors[index]),
           const SizedBox(height: 15.0),
           _buildInputField(
-              context, 'State', _stateControllers[index], _isEditing),
-          const SizedBox(height: 15.0),
-          _buildInputField(
-              context, 'City', _cityControllers[index], _isEditing),
-          const SizedBox(height: 15.0),
-          _buildInputField(context, 'Description',
-              _descriptionControllers[index], _isEditing),
+              context,
+              'Description',
+              _descriptionControllers[index],
+              _isEditing,
+              _descriptionErrors[index]),
           const SizedBox(height: 15.0),
           // Start Date and End Date pickers
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _isEditing
-                      ? _selectMonthYear(context, index, true)
-                      : null,
-                  child: AbsorbPointer(
-                    absorbing: !_isEditing,
-                    child: _buildInputField(
-                      context,
-                      'Start Date',
-                      _startDateControllers[index],
-                      false, // Set to false to disable direct text input
-                    ),
+              // Start Date
+              GestureDetector(
+                onTap: () =>
+                    _isEditing ? _selectMonthYear(context, index, true) : null,
+                child: AbsorbPointer(
+                  absorbing: !_isEditing,
+                  child: _buildInputField(
+                    context,
+                    'Start Date',
+                    _startDateControllers[index],
+                    false,
+                    _startDateErrors[index],
                   ),
                 ),
               ),
-              const SizedBox(width: 15.0),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _isEditing
-                      ? _selectMonthYear(context, index, false)
-                      : null,
-                  child: AbsorbPointer(
-                    absorbing: !_isEditing,
-                    child: _buildInputField(
-                      context,
-                      'End Date',
-                      _endDateControllers[index],
-                      false, // Set to false to disable direct text input
-                    ),
+              if (_dateValidationErrors[index] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5.0),
+                  child: Text(
+                    _dateValidationErrors[index]!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
+                  ),
+                ),
+              const SizedBox(height: 15.0),
+              // End Date
+              GestureDetector(
+                onTap: () =>
+                    _isEditing ? _selectMonthYear(context, index, false) : null,
+                child: AbsorbPointer(
+                  absorbing: !_isEditing,
+                  child: _buildInputField(
+                    context,
+                    'End Date',
+                    _endDateControllers[index],
+                    false,
+                    _endDateErrors[index],
                   ),
                 ),
               ),
+              if (_dateValidationErrors[index] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5.0),
+                  child: Text(
+                    _dateValidationErrors[index]!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12.0),
+                  ),
+                ),
+              const SizedBox(height: 15.0),
+              
+              if (_isEditing)
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _isPublicControllers[index],
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _isPublicControllers[index] = value ?? true;
+                        });
+                      },
+                    ),
+                    const Text('Public'),
+                  ],
+                ),
             ],
           ),
-          const SizedBox(height: 15.0),
-          if (_isEditing)
-            Row(
-              children: [
-                Checkbox(
-                  value: _isPublicControllers[index],
-                  onChanged: (bool? value) {
-                    setState(() {
-                      _isPublicControllers[index] = value ?? true;
-                    });
-                  },
-                ),
-                const Text('Public'),
-              ],
-            ),
         ],
       ),
     );
@@ -750,17 +875,13 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
                   style: AppWidget.semiBoldTextFieldStyle()),
               const SizedBox(height: 10.0),
               TextField(
-                controller: _otherIndustryControllers[
-                    index], // Ensure this controller has the right text
+                controller: _otherIndustryControllers[index],
                 enabled: editable,
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+                    fontWeight: FontWeight.bold, color: Colors.black),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
+                      borderRadius: BorderRadius.circular(10.0)),
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 15.0, vertical: 15.0),
                   hintText: 'Enter Industry',
@@ -773,7 +894,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Widget _buildInputField(BuildContext context, String labelText,
-      TextEditingController controller, bool isEditable) {
+      TextEditingController controller, bool isEditable, String? errorMessage) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -781,8 +902,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         const SizedBox(height: 10.0),
         TextField(
           controller: controller,
-          enabled:
-              isEditable, // This controls whether the field is editable or not
+          enabled: isEditable,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -791,8 +911,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
-              borderSide: const BorderSide(
-                color: Colors.grey,
+              borderSide: BorderSide(
+                color: errorMessage != null ? Colors.red : Colors.grey,
                 width: 2.0,
               ),
             ),
@@ -800,93 +920,101 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
                 const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
           ),
         ),
+        if (errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 5.0),
+            child: Text(
+              errorMessage,
+              style: const TextStyle(color: Colors.red, fontSize: 12.0),
+            ),
+          ),
       ],
     );
   }
-}
 
-Future<DateTime?> showMonthYearPicker({
-  required BuildContext context,
-  required DateTime initialDate,
-  required DateTime firstDate,
-  required DateTime lastDate,
-}) {
-  return showDialog<DateTime>(
-    context: context,
-    builder: (BuildContext context) {
-      DateTime selectedDate = initialDate;
+  Future<DateTime?> showMonthYearPicker({
+    required BuildContext context,
+    required DateTime initialDate,
+    required DateTime firstDate,
+    required DateTime lastDate,
+  }) {
+    return showDialog<DateTime>(
+      context: context,
+      builder: (BuildContext context) {
+        DateTime selectedDate = initialDate;
 
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Select Month and Year'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  title: const Text('Month'),
-                  trailing: DropdownButton<int>(
-                    value: selectedDate.month,
-                    items: List.generate(12, (index) {
-                      return DropdownMenuItem(
-                        value: index + 1,
-                        child: Text(
-                          "${index + 1}",
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      );
-                    }),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedDate = DateTime(selectedDate.year, value);
-                        });
-                      }
-                    },
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Month and Year'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: const Text('Month'),
+                    trailing: DropdownButton<int>(
+                      value: selectedDate.month,
+                      items: List.generate(12, (index) {
+                        return DropdownMenuItem(
+                          value: index + 1,
+                          child: Text(
+                            "${index + 1}",
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        );
+                      }),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedDate = DateTime(selectedDate.year, value);
+                          });
+                        }
+                      },
+                    ),
                   ),
+                  ListTile(
+                    title: const Text('Year'),
+                    trailing: DropdownButton<int>(
+                      value: selectedDate.year,
+                      items: List.generate(lastDate.year - firstDate.year + 1,
+                          (index) {
+                        return DropdownMenuItem(
+                          value: firstDate.year + index,
+                          child: Text(
+                            "${firstDate.year + index}",
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        );
+                      }),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedDate = DateTime(value, selectedDate.month);
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop(selectedDate);
+                  },
                 ),
-                ListTile(
-                  title: const Text('Year'),
-                  trailing: DropdownButton<int>(
-                    value: selectedDate.year,
-                    items: List.generate(lastDate.year - firstDate.year + 1,
-                        (index) {
-                      return DropdownMenuItem(
-                        value: firstDate.year + index,
-                        child: Text(
-                          "${firstDate.year + index}",
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      );
-                    }),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedDate = DateTime(value, selectedDate.month);
-                        });
-                      }
-                    },
-                  ),
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                child: const Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop(selectedDate);
-                },
-              ),
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
+            );
+          },
+        );
+      },
+    );
+  }
 }

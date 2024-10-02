@@ -89,7 +89,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/register'),
+        Uri.parse('http://172.16.20.114:4000/api/register'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -98,6 +98,7 @@ class _SignUpPageState extends State<SignUpPage> {
           'password': password,
         }),
       );
+      devtools.log(response.statusCode.toString());
 
       if (response.statusCode == 201) {
         _showSuccessDialog(); // Show success dialog when registration is successful

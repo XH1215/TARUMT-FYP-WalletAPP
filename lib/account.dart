@@ -2,6 +2,7 @@ import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
 import 'package:flutter/material.dart';
 import 'view_profile.dart';
 import 'welcome.dart';
+import 'change_passwd.dart';
 import 'dart:developer' as devtools show log;
 
 class Account extends StatefulWidget {
@@ -138,7 +139,17 @@ class _AccountState extends State<Account> {
                 ),
               ),
               const SizedBox(height: 20.0), // Space between boxes
-
+              _buildInfoBoxWithIcon(
+                context,
+                const Icon(Icons.vpn_key, size: 50.0, color: Color(0xFF171B63)),
+                'Change Password',
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ChangePasswdView()),
+                ),
+              ),
+              const SizedBox(height: 20.0), // Space between boxes
               // Using Icon for Logout
               _buildInfoBoxWithIcon(
                 context,

@@ -42,7 +42,7 @@ module.exports.generateQRCode = async (req, res) => {
             .input('title', sql.VarChar, title)
             .query(`
                 INSERT INTO QRPermission 
-                (userID, PerID, EduBacIDs, CerIDs, SoftIDs, WorkExpIDs, QRHashCode, ExpireDate, QRCodeImage, title) 
+                (AccountID, PerID, EduBacIDs, CerIDs, SoftIDs, WorkExpIDs, QRHashCode, ExpireDate, QRCodeImage, title) 
                 OUTPUT INSERTED.QRCodeImage
                 VALUES (@userID, @PerID, @EduBacIDs, @CerIDs, @SoftIDs, @WorkExpIDs, @QRHashCode, DATEADD(DAY, 30, GETDATE()), @QRCodeImage, @title);
             `);
@@ -156,7 +156,7 @@ module.exports.fetchQRCodesByUserId = async (req, res) => {
             .query(`
                 SELECT title, QRPermissionID, QRHashCode, QRCodeImage, ExpireDate 
                 FROM QRPermission 
-                WHERE UserID = @userID AND ExpireDate > GETDATE()
+                WHERE AccountID = @userID AND ExpireDate > GETDATE()
             `);
 
         if (qrCodesResult.recordset.length === 0) {

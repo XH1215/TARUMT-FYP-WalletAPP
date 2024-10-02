@@ -83,7 +83,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.168:3000/api/getCVSkill?accountID=$accountID'),
+            'http://172.16.20.114:4000/api/getCVSkill?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -227,7 +227,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/saveCVSkill'),
+        Uri.parse('http://172.16.20.114:4000/api/saveCVSkill'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -275,7 +275,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     if (softID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://172.16.20.168:3000/api/deleteCVSkill'),
+          Uri.parse('http://172.16.20.114:4000/api/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'SoftID': softID}),
         );

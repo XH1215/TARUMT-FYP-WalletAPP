@@ -79,7 +79,7 @@ class _ViewProfileState extends State<ViewProfile> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://172.16.20.168:3000/api/getProfile?accountID=$accountID'),
+        Uri.parse('http://172.16.20.114:4000/api/getProfile?accountID=$accountID'),
       );
 
       devtools.log('Response status: ${response.statusCode}');
@@ -115,7 +115,7 @@ class _ViewProfileState extends State<ViewProfile> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.168:3000/api/getAccountEmail?accountID=$accountID'),
+            'http://172.16.20.114:4000/api/getAccountEmail?accountID=$accountID'),
       );
 
       devtools.log('Response status for email: ${response.statusCode}');
@@ -158,7 +158,7 @@ class _ViewProfileState extends State<ViewProfile> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/saveProfile'),
+        Uri.parse('http://172.16.20.114:4000/api/saveProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },

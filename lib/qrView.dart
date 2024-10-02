@@ -106,13 +106,13 @@ class _qrViewState extends State<qrView> {
     }
   }
 
-  void _showQRCodeImage(String qrCodeImage, int qrId, String qrTitle) {
+  void _showQRCodeImage(String qrCodeImage, int qrId) {
     final qrCodeImageBytes = base64Decode(qrCodeImage);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(qrTitle), // Show the QR code title here
+          title: const Text('QR Code'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -195,9 +195,7 @@ class _qrViewState extends State<qrView> {
 
     // Check if a QR code was generated and refresh the list if needed
     if (result == 'qr_generated') {
-      setState(() {
-        _fetchQRCodes(); // Refresh the QR code list when navigating back
-      });
+      _fetchQRCodes(); // Refresh the QR code list
     }
   }
 
@@ -205,7 +203,9 @@ class _qrViewState extends State<qrView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('QR Page'),
+        centerTitle: true,
+        elevation: 0,
+        title: Text('QR Page', style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -235,24 +235,18 @@ class _qrViewState extends State<qrView> {
                                 final formattedDate =
                                     '${expireDate.day}/${expireDate.month}/${expireDate.year}';
 
-                                // Fetch the title from qrCodes data
-                                final qrTitle =
-                                    qrCode['title'] ?? 'Untitled QR Code';
-
                                 return Card(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(15.0),
                                   ),
                                   child: ListTile(
-                                    title: Text(
-                                        qrTitle), // Display the title from qrCodes
+                                    title: Text('QR Code ${index + 1}'),
                                     subtitle:
                                         Text('Expires on: $formattedDate'),
                                     onTap: () => _showQRCodeImage(
-                                      qrCode['qrCodeImage'],
-                                      qrCode['qrId'], // Pass qrId
-                                      qrTitle, // Pass title to show in dialog
-                                    ),
+                                        qrCode['qrCodeImage'],
+                                        qrCode[
+                                            'qrId']), // Ensure qrId is passed correctly
                                   ),
                                 );
                               },
@@ -266,24 +260,32 @@ class _qrViewState extends State<qrView> {
               child: ElevatedButton(
                 onPressed: _navigateToGenerateQRView,
                 style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(30), // Larger rounded button
-                  ),
+                  backgroundColor: const Color(0xFF171B63),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 50, // More horizontal padding for larger button
-                    vertical: 20, // More vertical padding for height
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 20, // Larger font size for the button text
+                      horizontal: 60.0, vertical: 15.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
                   ),
                 ),
-                child: const Text('Generate QR Code'),
+                child: const Text('Generate QR Code',
+                    style: TextStyle(color: Colors.white, fontSize: 15.0)),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class AppWidget {
+  static TextStyle headlineTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 20.0, fontWeight: FontWeight.bold);
+  }
+
+  static TextStyle semiBoldTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 16.0, fontWeight: FontWeight.w600);
   }
 }

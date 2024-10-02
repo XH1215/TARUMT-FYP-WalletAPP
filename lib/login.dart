@@ -67,6 +67,7 @@ class _LoginViewState extends State<LoginView> {
       devtools.log(user.toString());
       if (user != null) {
         devtools.log('Login successful');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
         );
@@ -75,18 +76,21 @@ class _LoginViewState extends State<LoginView> {
         );
       } else {
         devtools.log('Login failed');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login failed')),
         );
       }
     } on UserNotFoundAuthException {
       devtools.log('User Not Found');
+      if (!mounted) return;
       await showErrorDialog(
         context,
         'User Not Found',
       );
     } on WrongPasswordAuthException {
       devtools.log('Wrong Password');
+      if (!mounted) return;
       await showErrorDialog(
         context,
         'Wrong Credentials',
@@ -94,7 +98,7 @@ class _LoginViewState extends State<LoginView> {
     } on GenericAuthException {
       await showErrorDialog(
         context,
-        'Authentication Error.',
+        'Invalid Email or Password.',
       );
     } finally {
       // Add this block
@@ -200,7 +204,7 @@ class _LoginViewState extends State<LoginView> {
                   ),
                 ),
                 child: _isLoading
-                    ? SizedBox(
+                    ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(

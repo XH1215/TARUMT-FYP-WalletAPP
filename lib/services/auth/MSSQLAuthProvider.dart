@@ -7,9 +7,7 @@ import 'dart:developer' as devtools show log;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MSSQLAuthProvider implements AuthProvider {
-  final String baseUrl = "http://172.16.20.168:3000/api";
-
-  //final String baseUrl = "http://127.0.0.1:3000/api";
+  final String baseUrl = "http://172.16.20.114:4000/api";
 
   AuthUser? _currentUser;
 
@@ -147,7 +145,6 @@ class MSSQLAuthProvider implements AuthProvider {
     required String cerID,
     required String softID,
     required String workExpID,
-    required String title,
   }) async {
     try {
       final qrData = {
@@ -157,9 +154,8 @@ class MSSQLAuthProvider implements AuthProvider {
         'CerID': cerID,
         'SoftID': softID,
         'WorkExpID': workExpID,
-        'title': title,
       };
-      devtools.log("\n\nPerID is : $softID\n\n\n");
+      devtools.log("\n\nPerID is : " + softID.toString() + "\n\n\n");
       final response = await http.post(
         Uri.parse('$baseUrl/generateQRCode'),
         headers: <String, String>{
@@ -236,7 +232,7 @@ class MSSQLAuthProvider implements AuthProvider {
   // Function to fetch CV data by QR ID
   Future<Map<String, dynamic>> fetchCVDataByQRCode(int qrId) async {
     final url = Uri.parse(
-        'http://172.16.20.168:3000/api/fetchCVByQRCode'); // Change to actual API URL
+        'http://172.16.20.114:4000/api/fetchCVByQRCode'); // Change to actual API URL
     final response = await http.post(
       url,
       headers: {
@@ -251,6 +247,76 @@ class MSSQLAuthProvider implements AuthProvider {
     } else {
       // If the server returns an error, throw an exception
       throw Exception('Failed to fetch CV data.');
+    }
+  }
+
+  Future<bool> verifyPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/verifyPassword'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      devtools.log(
+          'Verify Password API Response: ${response.statusCode} ${response.body}');
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        return false;
+      } else {
+        throw GenericAuthException();
+      }
+    } catch (e) {
+      devtools.log('Verify Password Error: $e');
+      throw GenericAuthException();
+    }
+  }
+
+  Future<void> changePassword({
+    required String email,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      if (newPassword.isEmpty || oldPassword.isEmpty) {
+        throw GenericAuthException();
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/changePassword'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'email': email,
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      );
+
+      devtools.log(
+          'Change Password API Response: ${response.statusCode} ${response.body}');
+      if (response.statusCode != 200) {
+        if (response.statusCode == 401) {
+          throw WrongPasswordAuthException();
+        } else if (response.statusCode == 404) {
+          throw UserNotFoundAuthException();
+        } else {
+          throw GenericAuthException();
+        }
+      }
+    } catch (e) {
+      devtools.log('Change Password Error: $e');
+      throw GenericAuthException();
     }
   }
 }

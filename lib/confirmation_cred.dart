@@ -33,7 +33,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
         // Step 1: Call getWalletData API
         final walletResponse = await http.post(
-          Uri.parse('http://172.16.20.168:3000/api/getWalletData'),
+          Uri.parse('http://172.16.20.114:4000/api/getWalletData'),
           headers: {
             'Content-Type': 'application/json',
           },
@@ -58,7 +58,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             devtools.log("Step2: Initiating getAuthToken call...");
 
             final tokenResponse = await http.post(
-              Uri.parse('http://172.16.20.168:3000/api/getAuthToken'),
+              Uri.parse('http://172.16.20.114:4000/api/getAuthToken'),
               headers: {
                 'Content-Type': 'application/json',
               },
@@ -74,7 +74,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               devtools.log("Step3: Fetching credentials using authToken...");
 
               final credentialsResponse = await http.post(
-                Uri.parse('http://172.16.20.168:3000/api/receiveOffer'),
+                Uri.parse('http://172.16.20.114:4000/api/receiveOffer'),
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization':
@@ -163,7 +163,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     try {
       devtools.log("Calling storeCredential and saveCVCertification API...");
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/storeCredential'),
+        Uri.parse('http://172.16.20.114:4000/api/storeCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -191,7 +191,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       //------------------------------------------
       // Step 1: Call saveCVCertification API
       final saveToDB = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/saveCVCertification'),
+        Uri.parse('http://172.16.20.114:4000/api/saveCVCertification'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -233,7 +233,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
       // Call the delete API with POST method
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/deleteCredential'),
+        Uri.parse('http://172.16.20.114:4000/api/deleteCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -274,11 +274,9 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Pending Credentials',
-        ),
+        title: Text('Pending Credentials',
+            style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Center(
         child: isLoading
@@ -363,5 +361,17 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               ),
       ),
     );
+  }
+}
+
+class AppWidget {
+  static TextStyle headlineTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 20.0, fontWeight: FontWeight.bold);
+  }
+
+  static TextStyle semiBoldTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 16.0, fontWeight: FontWeight.w600);
   }
 }

@@ -1,6 +1,7 @@
 const express = require('express');
 
-const { login, register, logout } = require('../controllers/userController');
+//const { login, register, logout} = require('../controllers/userController');
+const { login, register, logout, verifyPassword, changePassword} = require('../controllers/userController');
 
 
 const { createWalletandDID } = require('../credential/acapyRegister');
@@ -61,6 +62,8 @@ router.post('/deleteCredential', deleteCredential);
 router.post('/login', login);
 router.post('/register', register);
 router.post('/logout', logout);
+router.post('/verifyPassword', verifyPassword);
+router.post('/changePassword', changePassword);
 
 // Profile routes
 router.post('/saveProfile', saveProfile);

@@ -1,7 +1,7 @@
 const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 const dbConfig = require('../config/dbConfigWallet');
-const { createWalletandDID } = require('../credential/acapyRegister'); // Corrected import
+const { createWalletandDID } = require('../credential/acapyRegister');
 
 let poolPromise = sql.connect(dbConfig)
     .then(pool => {
@@ -31,6 +31,7 @@ const register = async (req, res) => {
                 errorCode: 'EMAIL_IN_USE',
             });
         }
+
         const walletResponse = await createWalletandDID(req, res); // Call and wait for response
 
         // If wallet creation fails, handle the error and rollback if necessary
@@ -41,8 +42,7 @@ const register = async (req, res) => {
                 errorCode: 'WALLET_CREATION_FAILED',
             });
         }
-        
-        // Check if email already exists
+
         // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -54,9 +54,6 @@ const register = async (req, res) => {
 
         const user = accountInsertResult.recordset[0];
 
-        // Create wallet and DID after successful registration
-
-
         // Success response
         res.status(201).json({
             success: true,
@@ -65,8 +62,6 @@ const register = async (req, res) => {
         });
     } catch (err) {
         console.error('Register Error: ', err);
-
-        // Server error response
         res.status(500).json({
             success: false,
             message: 'Server error occurred',
@@ -75,8 +70,6 @@ const register = async (req, res) => {
         });
     }
 };
-
-
 
 const login = async (req, res) => {
     const { email, password } = req.body;
@@ -108,4 +101,67 @@ const logout = async (req, res) => {
     res.status(200).send('Logout successful');
 };
 
-module.exports = { register, login, logout };
+const verifyPassword = async (req, res) => {
+    const { email, password } = req.body;
+    console.log(`Password verification attempt for: ${email}`);
+
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('email', sql.NVarChar, email)
+            .query('SELECT Password FROM [Account] WHERE Email = @email');
+
+        if (result.recordset.length > 0) {
+            const user = result.recordset[0];
+            const isPasswordValid = await bcrypt.compare(password, user.Password);
+
+            if (isPasswordValid) {
+                res.status(200).send('Password verified');
+            } else {
+                res.status(401).send('Incorrect password');
+            }
+        } else {
+            res.status(404).send('Account not found');
+        }
+    } catch (err) {
+        console.error('Error verifying password:', err);
+        res.status(500).send('Server error');
+    }
+};
+
+const changePassword = async (req, res) => {
+    const { email, oldPassword, newPassword } = req.body;
+    console.log(`Password change attempt for: ${email}`);
+
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('email', sql.NVarChar, email)
+            .query('SELECT Password FROM [Account] WHERE Email = @email');
+
+        if (result.recordset.length > 0) {
+            const user = result.recordset[0];
+            const isPasswordValid = await bcrypt.compare(oldPassword, user.Password);
+
+            if (isPasswordValid) {
+                const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+                await pool.request()
+                    .input('email', sql.NVarChar, email) // Corrected sql.NVarChary to sql.NVarChar
+                    .input('newPassword', sql.NVarChar, hashedNewPassword)
+                    .query('UPDATE [Account] SET Password = @newPassword WHERE Email = @email');
+
+                res.status(200).send('Password updated successfully');
+            } else {
+                res.status(401).send('Incorrect old password');
+            }
+        } else {
+            res.status(404).send('Account not found');
+        }
+    } catch (err) {
+        console.error('Error changing password:', err);
+        res.status(500).send('Server error');
+    }
+};
+
+// Consolidate all exports at the end
+module.exports = { register, login, logout, verifyPassword, changePassword };

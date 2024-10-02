@@ -35,7 +35,7 @@ class _ViewCVState extends State<ViewCV> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.16.20.168:3000/api/showDetails'),
+        Uri.parse('http://172.16.20.114:4000/api/showDetails'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(
             {'accountID': accountID}), // Send accountID to the backend
@@ -80,10 +80,12 @@ class _ViewCVState extends State<ViewCV> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('View CV'),
+        centerTitle: true,
+        elevation: 0,
+        title: Text('View CV', style: AppWidget.headlineTextFieldStyle()),
       ),
       body: _isLoading
           ? const Center(
@@ -99,28 +101,34 @@ class _ViewCVState extends State<ViewCV> {
                     children: [
                       _buildSectionTitle(Icons.person, 'Profile Information'),
                       _buildProfileSection(_cvData!['profile']),
-                      const SizedBox(height: 20), // More space between categories
+                      const SizedBox(
+                          height: 20), // More space between categories
                       _buildSectionTitle(Icons.school, 'Education Information'),
                       _cvData!['education'] != null
                           ? _buildEducationSection(_cvData!['education'])
                           : const Text("No education information available."),
-                      const SizedBox(height: 20), // More space between categories
+                      const SizedBox(
+                          height: 20), // More space between categories
                       _buildSectionTitle(Icons.work, 'Work Experience'),
                       _cvData!['workExperience'] != null
                           ? _buildWorkSection(_cvData!['workExperience'])
                           : const Text("No work experience available."),
-                      const SizedBox(height: 20), // More space between categories
+                      const SizedBox(
+                          height: 20), // More space between categories
                       _buildSectionTitle(Icons.lightbulb, 'Skills'),
                       _cvData!['skills'] != null
                           ? _buildSoftSkillsSection(_cvData!['skills'])
                           : const Text("No skills information available."),
-                      const SizedBox(height: 20), // More space between categories
+                      const SizedBox(
+                          height: 20), // More space between categories
 
                       // Certifications Section
                       _buildSectionTitle(Icons.star, 'Certifications'),
                       _cvData!['certification'] != null
-                          ? _buildCertificationSection(_cvData!['certification'])
-                          : const Text("No certification information available."),
+                          ? _buildCertificationSection(
+                              _cvData!['certification'])
+                          : const Text(
+                              "No certification information available."),
                       const SizedBox(height: 30), // Add some spacing
                     ],
                   ),
@@ -134,7 +142,7 @@ class _ViewCVState extends State<ViewCV> {
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue),
+          Icon(icon, color: const Color(0xFF171B63)),
           const SizedBox(width: 8.0),
           Text(
             title,
@@ -188,7 +196,8 @@ class _ViewCVState extends State<ViewCV> {
               'Start Date: ${edu['start_date']}',
               'End Date: ${edu['end_date']}',
             ]),
-            const SizedBox(height: 5), // Less space between items in the same category
+            const SizedBox(
+                height: 5), // Less space between items in the same category
           ],
         );
       }).toList(),
@@ -212,7 +221,8 @@ class _ViewCVState extends State<ViewCV> {
               'Start Date: ${work['start_date']}',
               'End Date: ${work['end_date']}',
             ]),
-            const SizedBox(height: 5), // Less space between items in the same category
+            const SizedBox(
+                height: 5), // Less space between items in the same category
           ],
         );
       }).toList(),
@@ -229,7 +239,8 @@ class _ViewCVState extends State<ViewCV> {
               'Skill: ${skill['skill']}',
               'Description: ${skill['description']}',
             ]),
-            const SizedBox(height: 5), // Less space between items in the same category
+            const SizedBox(
+                height: 5), // Less space between items in the same category
           ],
         );
       }).toList(),
@@ -254,7 +265,8 @@ class _ViewCVState extends State<ViewCV> {
               'Description: ${cert['description']}',
               'Acquired Date: ${cert['acquiredDate']}',
             ]),
-            const SizedBox(height: 5), // Less space between items in the same category
+            const SizedBox(
+                height: 5), // Less space between items in the same category
           ],
         );
       }).toList(),
@@ -264,7 +276,8 @@ class _ViewCVState extends State<ViewCV> {
   // Helper function to create a box of information
   Widget _buildInfoBox(List<String> info) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 5.0), // Less margin between items
+      margin: const EdgeInsets.symmetric(
+          vertical: 5.0), // Less margin between items
       padding: const EdgeInsets.all(20.0),
       width: double.infinity,
       decoration: BoxDecoration(
@@ -285,5 +298,17 @@ class _ViewCVState extends State<ViewCV> {
         }).toList(),
       ),
     );
+  }
+}
+
+class AppWidget {
+  static TextStyle headlineTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 20.0, fontWeight: FontWeight.bold);
+  }
+
+  static TextStyle semiBoldTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 16.0, fontWeight: FontWeight.w600);
   }
 }
