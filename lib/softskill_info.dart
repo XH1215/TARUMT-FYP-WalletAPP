@@ -45,8 +45,11 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
   @override
   void initState() {
+    if (!mounted) return;
     super.initState();
+    if (!mounted) return;
     _initializeSkillEntries();
+    if (!mounted) return;
     _fetchSkillData();
   }
 
@@ -74,6 +77,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
   }
 
   Future<void> _fetchSkillData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
@@ -122,9 +126,11 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     } catch (e) {
       devtools.log('Error fetching skill data: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

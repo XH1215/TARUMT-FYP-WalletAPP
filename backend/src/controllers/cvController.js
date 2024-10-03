@@ -140,6 +140,7 @@ module.exports.getAccountEmail = async (req, res) => {
 // CV MANAGEMENT
 // CV Profile
 
+
 module.exports.saveCVProfile = async (req, res) => {
     const {
         accountID, Photo, name, age, email_address, mobile_number, address, description, PerID: passedPerID
@@ -216,7 +217,7 @@ module.exports.saveCVProfile = async (req, res) => {
         console.log("PerID:", PerID);
 
         // Call the second API, passing the PerID and other profile data
-        const secondApiUrl = 'http://172.16.20.25:3010/api/saveCVProfile';
+        const secondApiUrl = 'http://localhost:3010/api/saveCVProfile';
         const profileData = { ...req.body, PerID }; // Add PerID to profile data
 
         try {
@@ -425,7 +426,7 @@ module.exports.saveCVEducation = async (req, res) => {
         console.log("educationEntries: " + educationEntries[0].start_date);
 
 
-        const secondApiUrl = 'http://172.16.20.25:3010/api/saveCVEducation';
+        const secondApiUrl = 'http://localhost:3010/api/saveCVEducation';
         const secondApiData = { ...req.body, educationEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -504,7 +505,7 @@ module.exports.deleteCVEducation = async (req, res) => {
         if (deleteResult.rowsAffected[0] > 0) {
             // Return 200 status code for successful deletion
 
-            const secondApiUrl = 'http://172.16.20.25:3010/api/deleteCVEducation';
+            const secondApiUrl = 'http://localhost:3010/api/deleteCVEducation';
 
 
             try {
@@ -621,7 +622,7 @@ module.exports.saveCVWork = async (req, res) => {
         const workEntries = [...existingWorkEntries, ...newWorkWithID];
         console.log(workEntries[0]);
 
-        const secondApiUrl = 'http://172.16.20.25:3010/api/saveCVWork';
+        const secondApiUrl = 'http://localhost:3010/api/saveCVWork';
         const secondApiData = { ...req.body, workEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -703,7 +704,7 @@ module.exports.deleteCVWork = async (req, res) => {
             await pool.request()
                 .input('WorkExpID', sql.Int, WorkExpID)
                 .query('DELETE FROM Work WHERE WorkExpID = @WorkExpID');
-            const secondApiUrl = 'http://172.16.20.25:3010/api/deleteCVWork';
+            const secondApiUrl = 'http://localhost:3010/api/deleteCVWork';
 
 
             try {
@@ -755,16 +756,17 @@ module.exports.saveCVCertification = async (req, res) => {
             .input('CerDescription', sql.NVarChar(200), CerDescription)
             .input('CerAcquiredDate', sql.DateTime, CerAcquiredDate)
             .input('IsPublic', sql.Bit, IsPublic)
+            .input('Active', sql.Bit, IsPublic)
             .query(`
-                INSERT INTO Certification (AccountID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate, IsPublic)
+                INSERT INTO Certification (AccountID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate, IsPublic, Active)
                 OUTPUT INSERTED.CerID
-                VALUES (@AccountID, @CerName, @CerEmail, @CerType, @CerIssuer, @CerDescription, @CerAcquiredDate, @IsPublic)
+                VALUES (@AccountID, @CerName, @CerEmail, @CerType, @CerIssuer, @CerDescription, @CerAcquiredDate, @IsPublic, @Active)
             `);
 
         const CerID = result.recordset[0].CerID;
 
         // Call the second function and pass the necessary data
-        const secondApiUrl = 'http://172.16.20.25:3010/api/saveCVCertification'; // Update with the actual URL if needed
+        const secondApiUrl = 'http://localhost:3010/api/saveCVCertification'; // Update with the actual URL if needed
         const secondApiData = {
             accountID,  // Account ID to be used as StudentAccID in the second function
             CerID,      // CerID from the first function passed as RefID in the second function
@@ -809,37 +811,6 @@ module.exports.saveCVCertification = async (req, res) => {
 };
 
 
-module.exports.getCVCertifications = async (req, res) => {
-    const { accountID } = req.body;
-
-    // Validate input
-    if (!accountID) {
-        return res.status(400).send('Account ID is required');
-    }
-
-    try {
-        const pool = await poolPromise;
-
-        // Fetch all certifications for the given accountID
-        const result = await pool.request()
-            .input('AccountID', sql.Int, accountID)
-            .query(`
-                SELECT CerID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate, IsPublic
-                FROM Certification
-                WHERE AccountID = @AccountID
-            `);
-
-        if (result.recordset.length === 0) {
-            return res.status(404).send('No certifications found for this account');
-        }
-
-        // Return the list of certifications
-        res.status(200).json(result.recordset);
-    } catch (error) {
-        console.error('Error fetching certifications:', error.message);
-        res.status(500).send('Server error');
-    }
-};
 // CV Skill
 // Save CV Skill
 module.exports.saveCVSkill = async (req, res) => {
@@ -857,12 +828,7 @@ module.exports.saveCVSkill = async (req, res) => {
         // Process existing skills (updates)
         if (existingSkillEntries && existingSkillEntries.length > 0) {
             for (const skill of existingSkillEntries) {
-                const { SoftID, SoftHighlight, SoftDescription, isPublic, SoftLevel } = skill;
-
-                // Validate SoftLevel is between 1 and 5
-                if (SoftLevel < 1 || SoftLevel > 5) {
-                    return res.status(400).send('Invalid SoftLevel value. It must be between 1 and 5.');
-                }
+                const { SoftID, SoftHighlight, SoftDescription, isPublic } = skill;
 
                 // Update the existing skill in the SoftSkill table
                 await pool.request()
@@ -870,10 +836,9 @@ module.exports.saveCVSkill = async (req, res) => {
                     .input('SoftHighlight', sql.NVarChar, SoftHighlight)
                     .input('SoftDescription', sql.NVarChar, SoftDescription)
                     .input('IsPublic', sql.Bit, isPublic)
-                    .input('SoftLevel', sql.Int, SoftLevel) // Add SoftLevel input
                     .query(`
                         UPDATE SoftSkill
-                        SET SoftHighlight = @SoftHighlight, SoftDescription = @SoftDescription, IsPublic = @IsPublic, SoftLevel = @SoftLevel
+                        SET SoftHighlight = @SoftHighlight, SoftDescription = @SoftDescription, IsPublic = @IsPublic
                         WHERE SoftID = @SoftID
                     `);
             }
@@ -882,12 +847,7 @@ module.exports.saveCVSkill = async (req, res) => {
         // Process new skills (inserts)
         if (newSkillEntries && newSkillEntries.length > 0) {
             for (const skill of newSkillEntries) {
-                const { SoftHighlight, SoftDescription, isPublic, SoftLevel } = skill;
-
-                // Validate SoftLevel is between 1 and 5
-                if (SoftLevel < 1 || SoftLevel > 5) {
-                    return res.status(400).send('Invalid SoftLevel value. It must be between 1 and 5.');
-                }
+                const { SoftHighlight, SoftDescription, isPublic } = skill;
 
                 // Insert new skill into the SoftSkill table
                 const result = await pool.request()
@@ -895,11 +855,10 @@ module.exports.saveCVSkill = async (req, res) => {
                     .input('SoftHighlight', sql.NVarChar, SoftHighlight)
                     .input('SoftDescription', sql.NVarChar, SoftDescription)
                     .input('IsPublic', sql.Bit, isPublic)
-                    .input('SoftLevel', sql.Int, SoftLevel) // Add SoftLevel input
                     .query(`
-                        INSERT INTO SoftSkill (AccountID, SoftHighlight, SoftDescription, IsPublic, SoftLevel)
+                        INSERT INTO SoftSkill (AccountID, SoftHighlight, SoftDescription, IsPublic)
                         OUTPUT INSERTED.SoftID
-                        VALUES (@AccountID, @SoftHighlight, @SoftDescription, @IsPublic, @SoftLevel)
+                        VALUES (@AccountID, @SoftHighlight, @SoftDescription, @IsPublic)
                     `);
 
                 // Add newly inserted SoftID to the response array
@@ -907,14 +866,13 @@ module.exports.saveCVSkill = async (req, res) => {
                     SoftID: result.recordset[0].SoftID,
                     SoftHighlight,
                     SoftDescription,
-                    SoftLevel,  // Include SoftLevel in the response
                     isPublic,
                 });
             }
         }
 
         const skillEntries = [...existingSkillEntries, ...newSkillsWithID];
-        const secondApiUrl = 'http://172.16.20.25:3010/api/saveCVSkill';
+        const secondApiUrl = 'http://localhost:3010/api/saveCVSkill';
         const secondApiData = { ...req.body, skillEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -954,7 +912,6 @@ module.exports.getCVSkill = async (req, res) => {
                     SoftID AS SoftID,
                     SoftHighlight AS SoftHighlight,
                     SoftDescription AS SoftDescription,
-                    SoftLevel AS SoftLevel,  -- Include SoftLevel in the query
                     isPublic AS isPublic
                 FROM SoftSkill
                 WHERE AccountID = @AccountID
@@ -965,7 +922,7 @@ module.exports.getCVSkill = async (req, res) => {
         if (result.recordset.length === 0) {
             res.status(404).send('No soft skill data found');
         } else {
-            res.json(result.recordset);  // Return the skill data with SoftLevel
+            res.json(result.recordset);
         }
     } catch (err) {
         console.error('Server error:', err);
@@ -998,7 +955,7 @@ module.exports.deleteCVSkill = async (req, res) => {
         await pool.request()
             .input('SoftID', sql.Int, SoftID)
             .query('DELETE FROM SoftSkill WHERE SoftID = @SoftID');
-        const secondApiUrl = 'http://172.16.20.25:3010/api/deleteCVSkill';
+        const secondApiUrl = 'http://localhost:3010/api/deleteCVSkill';
 
 
         try {
@@ -1045,7 +1002,8 @@ module.exports.getCertifications = async (req, res) => {
                   CerIssuer AS [Issuer], 
                   CerDescription AS [Description], 
                   CerAcquiredDate AS [CertificationAcquireDate],
-                  isPublic AS isPublic
+                  isPublic AS isPublic,
+                  Active As Active
                 FROM 
                   Certification 
                 WHERE 
@@ -1093,8 +1051,8 @@ module.exports.updateCertificationStatus = async (req, res) => {
 
         // Determine the external API URL based on the isPublic value
         const apiUrl = isPublic
-            ? 'http://172.16.20.25:3010/api/updateCVCertification'
-            : 'http://172.16.20.25:3010/api/deleteCVCertification';
+            ? 'http://localhost:3010/api/updateCVCertification'
+            : 'http://localhost:3010/api/deleteCVCertification';
         console.log(apiUrl);
         // Prepare the certification object for the external API call
         const certData = {
@@ -1220,7 +1178,8 @@ module.exports.getCVQualiInfo = async (req, res) => {
 };
 
 
-// Get detailed information, including SoftSkill with SoftLevel
+
+
 module.exports.showDetails = async (req, res) => {
     try {
         const { accountID } = req.body; // Get accountID from the request body
@@ -1231,10 +1190,10 @@ module.exports.showDetails = async (req, res) => {
 
         const pool = await poolPromise;
 
-        // Fetch Profile information
+        // Fetch Profile information, including PerID
         const profileQuery = `
             SELECT 
-                PerID AS perID, 
+                PerID AS perID,        -- Assuming PerID is the column for the profile ID
                 Name AS name, 
                 Age AS age, 
                 Email_Address AS email, 
@@ -1255,7 +1214,7 @@ module.exports.showDetails = async (req, res) => {
 
         const userDetails = profileResult.recordset[0];
 
-        // Convert Photo to base64 if it exists
+        // If the user has a Photo, encode it in base64
         if (userDetails.profile_image_path) {
             userDetails.profile_image_path = Buffer.from(userDetails.profile_image_path).toString('base64');
         }
@@ -1300,13 +1259,12 @@ module.exports.showDetails = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(workExperienceQuery);
 
-        // Fetch SoftSkill information with SoftLevel
+        // Fetch SoftSkill information
         const skillsQuery = `
             SELECT 
                 SoftID AS SoftID,
                 SoftHighlight AS skill,
                 SoftDescription AS description,
-                SoftLevel AS level, 
                 IsPublic AS isPublic
             FROM SoftSkill
             WHERE AccountID = @accountID AND IsPublic = 1;
@@ -1317,18 +1275,19 @@ module.exports.showDetails = async (req, res) => {
 
         // Fetch Certifications information
         const certificationsQuery = `
-            SELECT 
-                CerID AS cerID, 
-                CerName AS name, 
-                CerEmail AS email, 
-                CerType AS type, 
-                CerIssuer AS issuer, 
-                CerDescription AS description, 
-                CONVERT(VARCHAR(10), CerAcquiredDate, 120) AS acquiredDate,
-                IsPublic AS isPublic
-            FROM Certification 
-            WHERE AccountID = @accountID AND IsPublic = 1;
-        `;
+    SELECT 
+        CerID AS cerID, 
+        CerName AS name, 
+        CerEmail AS email, 
+        CerType AS type, 
+        CerIssuer AS issuer, 
+        CerDescription AS description, 
+        CONVERT(VARCHAR(10), CerAcquiredDate, 120) AS acquiredDate,
+        IsPublic AS isPublic
+    FROM Certification 
+    WHERE AccountID = @accountID AND IsPublic = 1;
+`;
+
         const certificationResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(certificationsQuery);
@@ -1348,22 +1307,21 @@ module.exports.showDetails = async (req, res) => {
         res.status(500).json({ error: 'Server error. Please try again later.' });
     }
 };
-// Get detailed information for QR profile, including SoftSkill with SoftLevel
+
 module.exports.showDetailsQR = async (req, res) => {
     try {
         const { accountID } = req.body; // Get accountID from the request body
         console.log("Called Backnd with AccID: " + accountID);
-
         if (!accountID) {
             return res.status(400).json({ error: 'AccountID is required' });
         }
 
         const pool = await poolPromise;
 
-        // Fetch Profile information
+        // Fetch Profile information, including PerID
         const profileQuery = `
             SELECT 
-                PerID AS perID, 
+                PerID AS perID,        -- Assuming PerID is the column for the profile ID
                 Name AS name, 
                 Age AS age, 
                 Email_Address AS email, 
@@ -1377,20 +1335,18 @@ module.exports.showDetailsQR = async (req, res) => {
         const profileResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(profileQuery);
-
         console.log("Done Search Profile");
-
         if (profileResult.recordset.length === 0) {
             console.log("Search Profile Error");
             return res.status(404).json({ error: 'User not found' });
         }
 
         const userDetails = profileResult.recordset[0];
-
-        // Convert Photo to base64 if it exists
+        // If the user has a Photo, encode it in base64
         if (userDetails.profile_image_path) {
             userDetails.profile_image_path = Buffer.from(userDetails.profile_image_path).toString('base64');
         }
+
 
         console.log("\nFetch Profile Done");
 
@@ -1414,6 +1370,7 @@ module.exports.showDetailsQR = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(educationQuery);
 
+
         console.log("\nFetch Education Done");
 
         // Fetch Work Experience information
@@ -1430,21 +1387,21 @@ module.exports.showDetailsQR = async (req, res) => {
                 CONVERT(VARCHAR(10), WorkStartDate, 120) AS start_date, 
                 CONVERT(VARCHAR(10), WorkEndDate, 120) AS end_date
             FROM Work
-            WHERE AccountID = @accountID
+            WHERE AccountID = @accountID 
         `;
         const workExperienceResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(workExperienceQuery);
 
+
         console.log("\nFetch Work Done");
 
-        // Fetch SoftSkill information with SoftLevel
+        // Fetch SoftSkill information
         const skillsQuery = `
             SELECT 
                 SoftID AS SoftID,
                 SoftHighlight AS skill,
                 SoftDescription AS description,
-                SoftLevel AS level,
                 IsPublic AS isPublic
             FROM SoftSkill
             WHERE AccountID = @accountID
@@ -1453,26 +1410,27 @@ module.exports.showDetailsQR = async (req, res) => {
             .input('accountID', sql.Int, accountID)
             .query(skillsQuery);
 
+
         console.log("\nFetch SoftSkill Done");
 
         // Fetch Certifications information
         const certificationsQuery = `
-            SELECT 
-                CerID AS cerID, 
-                CerName AS name, 
-                CerEmail AS email, 
-                CerType AS type, 
-                CerIssuer AS issuer, 
-                CerDescription AS description, 
-                CONVERT(VARCHAR(10), CerAcquiredDate, 120) AS acquiredDate,
-                IsPublic AS isPublic
-            FROM Certification 
-            WHERE AccountID = @accountID
-        `;
+    SELECT 
+        CerID AS cerID, 
+        CerName AS name, 
+        CerEmail AS email, 
+        CerType AS type, 
+        CerIssuer AS issuer, 
+        CerDescription AS description, 
+        CONVERT(VARCHAR(10), CerAcquiredDate, 120) AS acquiredDate,
+        IsPublic AS isPublic
+    FROM Certification 
+    WHERE AccountID = @accountID 
+`;
+
         const certificationResult = await pool.request()
             .input('accountID', sql.Int, accountID)
             .query(certificationsQuery);
-
         console.log("\nFetch Certification Done");
 
         // Combine profile, education, work experience, skills, and certifications into a single object

@@ -75,7 +75,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:4000/api/getCVProfile?accountID=$accountID'),
+        Uri.parse('http://172.16.20.25:4000/api/getCVProfile?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -126,7 +126,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://10.0.2.2:4000/api/getPersonDetails?accountID=$accountID'),
+            'http://172.16.20.25:4000/api/getPersonDetails?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -289,14 +289,14 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
     try {
       // final response = await http.post(
-      //   Uri.parse('http://10.0.2.2:4000/api/saveCVProfile'),
+      //   Uri.parse('http://172.16.20.25:4000/api/saveCVProfile'),
       //   headers: <String, String>{
       //     'Content-Type': 'application/json; charset=UTF-8',
       //   },
       //   body: jsonEncode(profileData),
       // );
       // final response2 = await http.post(
-      //   Uri.parse('http://10.0.2.2:3010/api/saveCVProfile'),
+      //   Uri.parse('http://172.16.20.25:3010/api/saveCVProfile'),
       //   headers: <String, String>{
       //     'Content-Type': 'application/json; charset=UTF-8',
       //   },
@@ -316,7 +316,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       // }
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:4000/api/saveCVProfile'),
+        Uri.parse('http://172.16.20.25:4000/api/saveCVProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },

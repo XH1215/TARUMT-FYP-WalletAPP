@@ -69,8 +69,11 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
   @override
   void initState() {
+    if (!mounted) return;
     super.initState();
+    if (!mounted) return;
     _initializeWorkEntries();
+    if (!mounted) return;
     _fetchWorkEntries();
   }
 
@@ -100,7 +103,16 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       _endDateErrors.clear();
       _industryErrors.clear();
       _dateValidationErrors.clear();
-
+      _jobTitleErrors.add(null);
+      _companyNameErrors.add(null);
+      _countryErrors.add(null);
+      _stateErrors.add(null);
+      _cityErrors.add(null);
+      _descriptionErrors.add(null);
+      _startDateErrors.add(null);
+      _endDateErrors.add(null);
+      _industryErrors.add(null);
+      _dateValidationErrors.add(null);
       _addWorkExperienceEntry();
     });
   }
@@ -116,19 +128,23 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
   }
 
   Future<void> _fetchWorkEntries() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
+    if (!mounted) return;
 
     final accountID = await _getAccountID();
     if (accountID == null) return;
 
     try {
       final response = await http.get(
-        Uri.parse('http://172.16.20.25:4000/api/getCVWork?accountID=$accountID'),
+        Uri.parse(
+            'http://172.16.20.25:4000/api/getCVWork?accountID=$accountID'),
         headers: {'Content-Type': 'application/json'},
       );
-      if(!mounted) return;
+      if (!mounted) return;
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
 
@@ -154,14 +170,19 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
           });
         }
       } else {
+        if (!mounted) return;
         showErrorDialog(context, 'Failed to load work entries');
       }
     } catch (error) {
+      if (!mounted) return;
+
       devtools.log('No work entries: $error');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -778,7 +799,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
                   ),
                 ),
               const SizedBox(height: 15.0),
-              
+
               if (_isEditing)
                 Row(
                   children: [

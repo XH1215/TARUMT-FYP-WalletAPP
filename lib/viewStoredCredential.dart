@@ -30,7 +30,7 @@ class _ViewStoredCredentialScreenState
 
     if (user != null) {
       try {
-        devtools.log("Fetching stored credentials... " + user.email);
+        devtools.log("Fetching stored credentials... ${user.email}");
         final response = await http.post(
           Uri.parse('http://172.16.20.25:4000/api/receiveExistedCredential'),
           headers: {
@@ -38,7 +38,7 @@ class _ViewStoredCredentialScreenState
           },
           body: json.encode({'holder': user.email}),
         );
-
+        devtools.log(response.body);
         if (response.statusCode == 200) {
           devtools.log("Successfully fetched stored credentials.");
           final data = json.decode(response.body);
