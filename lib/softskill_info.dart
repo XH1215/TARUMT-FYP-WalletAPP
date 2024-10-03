@@ -88,7 +88,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.25:4000/api/getCVSkill?accountID=$accountID'),
+            'http://192.168.1.9:4000/api/getCVSkill?accountID=$accountID'),
       );
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -191,14 +191,12 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
           _skillNameErrors[i] = 'Skill name cannot be empty.';
         });
         hasError = true;
-        break;
       }
       if (currentDescription.isEmpty) {
         setState(() {
           _descriptionErrors[i] = 'Description cannot be empty.';
         });
         hasError = true;
-        break;
       }
 
       final entry = {
@@ -237,7 +235,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.16.20.25:4000/api/saveCVSkill'),
+        Uri.parse('http://192.168.1.9:4000/api/saveCVSkill'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -284,7 +282,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     if (softID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://172.16.20.25:4000/api/deleteCVSkill'),
+          Uri.parse('http://192.168.1.9:4000/api/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'SoftID': softID}),
         );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
+import 'show_error_dialog.dart';
 
 class ConfirmationScreen extends StatefulWidget {
   const ConfirmationScreen({super.key});
@@ -19,7 +20,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
 //let sainoforce know the status
   Future<void> sendMessage(String message, credential) async {
-    final url = Uri.parse('http://172.16.20.25:3011/api/UpdateStatus');
+    final url = Uri.parse('http://192.168.1.9:3011/api/UpdateStatus');
     devtools.log("Message Send");
     try {
       final response = await http.post(
@@ -49,13 +50,18 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   }
 
   Future<void> fetchCredentials() async {
+    if (!mounted) return;
+
     setState(() {
       isLoading = true;
       noDataMessage = null;
     });
+    if (!mounted) return;
 
     final MSSQLAuthProvider authProvider = MSSQLAuthProvider();
     await authProvider.initialize();
+    if (!mounted) return;
+
     final user = authProvider.currentUser;
 
     if (user != null) {
@@ -64,12 +70,13 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
         // Step 1: Call getWalletData API
         final walletResponse = await http.post(
-          Uri.parse('http://172.16.20.25:4000/api/getWalletData'),
+          Uri.parse('http://192.168.1.9:4000/api/getWalletData'),
           headers: {
             'Content-Type': 'application/json',
           },
           body: json.encode({'email': user.email}),
         );
+        if (!mounted) return;
 
         if (walletResponse.statusCode == 200) {
           devtools.log("Step1.1: getWalletData successful.");
@@ -89,12 +96,13 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             devtools.log("Step2: Initiating getAuthToken call...");
 
             final tokenResponse = await http.post(
-              Uri.parse('http://172.16.20.25:4000/api/getAuthToken'),
+              Uri.parse('http://192.168.1.9:4000/api/getAuthToken'),
               headers: {
                 'Content-Type': 'application/json',
               },
               body: json.encode({'walletID': walletID}),
             );
+            if (!mounted) return;
 
             if (tokenResponse.statusCode == 200) {
               final tokenData = json.decode(tokenResponse.body);
@@ -105,7 +113,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               devtools.log("Step3: Fetching credentials using authToken...");
 
               final credentialsResponse = await http.post(
-                Uri.parse('http://172.16.20.25:4000/api/receiveOffer'),
+                Uri.parse('http://192.168.1.9:4000/api/receiveOffer'),
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization':
@@ -113,15 +121,20 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                 },
                 body: json.encode({'holder': user.email}),
               );
+              if (!mounted) return;
 
               if (credentialsResponse.statusCode == 200) {
                 final data = json.decode(credentialsResponse.body);
+                if (!mounted) return;
+
                 setState(() {
                   credentials = data['credentials'] ?? [];
                   isLoading = false;
                 });
                 devtools.log("Step3: Credentials fetched successfully.");
               } else {
+                if (!mounted) return;
+
                 setState(() {
                   isLoading = false;
                   noDataMessage = "No Pending Credentials.";
@@ -130,6 +143,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                     'Error fetching credentials: ${credentialsResponse.body}');
               }
             } else {
+              if (!mounted) return;
+
               setState(() {
                 isLoading = false;
                 noDataMessage = "Error retrieving auth token.";
@@ -138,6 +153,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                   .log('Error retrieving auth token: ${tokenResponse.body}');
             }
           } else {
+            if (!mounted) return;
+
             setState(() {
               isLoading = false;
               noDataMessage = "Invalid wallet data structure.";
@@ -146,6 +163,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                 .log('Invalid wallet data structure: ${walletData.toString()}');
           }
         } else {
+          if (!mounted) return;
+
           setState(() {
             isLoading = false;
             noDataMessage = "Error fetching wallet data.";
@@ -153,6 +172,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
           devtools.log('Error fetching wallet data: ${walletResponse.body}');
         }
       } catch (error) {
+        if (!mounted) return;
+
         setState(() {
           isLoading = false;
           noDataMessage = "Error fetching data.";
@@ -160,6 +181,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
         devtools.log('Error occurred: $error');
       }
     } else {
+      if (!mounted) return;
+
       setState(() {
         isLoading = false;
         noDataMessage = "User not found.";
@@ -169,13 +192,21 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
 // Function to call storeCredential and saveCVCertification APIs
   Future<void> storeCredential(Map<String, dynamic> credential) async {
-    if (authToken == null) {
+    if (authToken == null && mounted) {
       setState(() {
         noDataMessage = "Auth token not found.";
       });
       return;
     }
+    if (!mounted) return;
+
+    setState(() {
+      isLoading = true; // Set loading to true
+    });
+
     final MSSQLAuthProvider authProvider = MSSQLAuthProvider();
+    if (!mounted) return;
+
     await authProvider.initialize();
     final user = authProvider.currentUser;
     // Extract necessary fields for saveCVCertification API
@@ -194,7 +225,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     try {
       devtools.log("Calling storeCredential and saveCVCertification API...");
       final response = await http.post(
-        Uri.parse('http://172.16.20.25:4000/api/storeCredential'),
+        Uri.parse('http://192.168.1.9:4000/api/storeCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -203,16 +234,51 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
           'jwtToken': authToken,
         }),
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         devtools.log('Credential stored successfully.');
         final data = json.decode(response.body);
         devtools.log('Store Response: $data');
 
+        //heree
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Success'),
+              content: Text.rich(
+                TextSpan(
+                  text: 'Credential ',
+                  style: const TextStyle(color: Colors.black), // Normal text
+                  children: [
+                    TextSpan(
+                      text: credential['did'] ?? 'N/A', // 'did' in bold
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const TextSpan(
+                      text: ' stored successfully.', // Normal text
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+        if (!mounted) return;
         setState(() {
           noDataMessage = 'Credential stored successfully.';
         });
         await fetchCredentials();
+        if (!mounted) return;
       } else {
         setState(() {
           noDataMessage = "Failed to store credential.";
@@ -222,12 +288,13 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       //------------------------------------------
       // Step 1: Call saveCVCertification API
       final saveToDB = await http.post(
-        Uri.parse('http://172.16.20.25:4000/api/saveCVCertification'),
+        Uri.parse('http://192.168.1.9:4000/api/saveCVCertification'),
         headers: {
           'Content-Type': 'application/json',
         },
         body: json.encode(credentialData),
       );
+      if (!mounted) return;
 
       if (saveToDB.statusCode == 200) {
         devtools.log('Certification saved successfully.');
@@ -247,6 +314,10 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
         noDataMessage = "Error occurred during storing credential.";
       });
       devtools.log('Error storing credential: $error');
+    } finally {
+      setState(() {
+        isLoading = false; // Set loading to false once done
+      });
     }
   }
 
@@ -264,17 +335,21 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
       // Call the delete API with POST method
       final response = await http.post(
-        Uri.parse('http://172.16.20.25:4000/api/deleteCredential'),
+        Uri.parse('http://192.168.1.9:4000/api/deleteCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
         body: json.encode({'credExId': credExId, 'jwtToken': authToken}),
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         devtools.log('Credential deleted successfully.');
         final data = json.decode(response.body);
         devtools.log('Delete Response: $data');
+
+        //heree
+        showErrorDialog(context, "Deleted Successfully");
 
         setState(() {
           noDataMessage = 'Credential deleted successfully.';
@@ -282,6 +357,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
         // Refresh the page by fetching updated credentials
         await fetchCredentials();
+        if (!mounted) return;
       } else {
         setState(() {
           noDataMessage = "Failed to delete credential.";
@@ -305,11 +381,9 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Pending Credentials',
-        ),
+        title: Text('Pending Credentials',
+            style: AppWidget.headlineTextFieldStyle()),
       ),
       body: Center(
         child: isLoading
@@ -398,5 +472,17 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               ),
       ),
     );
+  }
+}
+
+class AppWidget {
+  static TextStyle headlineTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 20.0, fontWeight: FontWeight.bold);
+  }
+
+  static TextStyle semiBoldTextFieldStyle() {
+    return const TextStyle(
+        color: Color(0xFF171B63), fontSize: 16.0, fontWeight: FontWeight.w600);
   }
 }

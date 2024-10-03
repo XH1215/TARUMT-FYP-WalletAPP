@@ -24,15 +24,15 @@ class _ViewStoredCredentialScreenState
       noDataMessage = null;
     });
 
-    final MSSQLAuthProvider _authProvider = MSSQLAuthProvider();
-    await _authProvider.initialize();
-    final user = _authProvider.currentUser;
+    final MSSQLAuthProvider authProvider = MSSQLAuthProvider();
+    await authProvider.initialize();
+    final user = authProvider.currentUser;
 
     if (user != null) {
       try {
         devtools.log("Fetching stored credentials... ${user.email}");
         final response = await http.post(
-          Uri.parse('http://172.16.20.25:4000/api/receiveExistedCredential'),
+          Uri.parse('http://192.168.1.9:4000/api/receiveExistedCredential'),
           headers: {
             'Content-Type': 'application/json',
           },

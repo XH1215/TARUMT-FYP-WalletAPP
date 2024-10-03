@@ -73,7 +73,7 @@ class _SelfCredentialPage1State extends State<SelfCredentialPage1>
     try {
       final response = await http.get(
         Uri.parse(
-            'http://172.16.20.25:4000/api/getCVProfile?accountID=$accountID'),
+            'http://192.168.1.9:4000/api/getCVProfile?accountID=$accountID'),
       );
 
       // Handle the response based on status code

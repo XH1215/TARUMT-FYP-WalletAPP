@@ -61,7 +61,7 @@ async function UpdateActive(req, res) {
 
             // Send the updated data to the backend
             await axios.post(
-                `http://172.16.20.25:3011/api/deleteCVCertification`,
+                `http://192.168.1.9:3011/api/deleteCVCertification`,
                 {
                     accountID: AccountID,
                     CerID: CerID,
