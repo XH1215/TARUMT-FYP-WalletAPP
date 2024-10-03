@@ -35,7 +35,7 @@ class _ViewCVState extends State<ViewCV> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/showDetails'),
+        Uri.parse('http://103.52.192.245:4000/api/showDetails'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'accountID': accountID}),
       );

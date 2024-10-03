@@ -39,7 +39,7 @@ class Credential2State extends State<Credential2> {
       if (accountID != null) {
         final response = await http.get(
           Uri.parse(
-              'http://192.168.1.9:4000/api/getCertifications?accountID=$accountID'),
+              'http://103.52.192.245:4000/api/getCertifications?accountID=$accountID'),
         );
         if (!mounted) return;
         if (response.statusCode == 200) {
@@ -94,7 +94,7 @@ class Credential2State extends State<Credential2> {
 
         // Call the backend with the updated certification data
         final response = await http.post(
-          Uri.parse('http://192.168.1.9:4000/api/updateCertificationStatus'),
+          Uri.parse('http://103.52.192.245:4000/api/updateCertificationStatus'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'accountID': accountID,

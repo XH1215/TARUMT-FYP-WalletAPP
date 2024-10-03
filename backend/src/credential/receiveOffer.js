@@ -17,7 +17,7 @@ async function receiveOffer(req, res) {
 
         // Fetch all credential offers from the ACA-Py agent (holder's side)
         const recordsResponse = await axios.get(
-            'http://192.168.1.9:7011/issue-credential-2.0/records',
+            'http://103.52.192.245:7011/issue-credential-2.0/records',
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,  // Use the retrieved JWT token

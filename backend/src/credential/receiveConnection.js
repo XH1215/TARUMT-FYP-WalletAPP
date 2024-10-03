@@ -19,7 +19,7 @@ async function receiveConnection(req, res) {
 
         console.log('Sending invitation to the SSI agent...');
         const response = await axios.post(
-            `http://192.168.1.9:7011/connections/receive-invitation`, 
+            `http://103.52.192.245:7011/connections/receive-invitation`, 
             invitation,
             {
                 headers: {
@@ -96,7 +96,7 @@ async function storeConnectionData(connectionID, issuer, status, email) {
 async function getAuthToken(walletID) {
     try {
         console.log(`Requesting auth token for walletID: ${walletID}`);
-        const url = `http://192.168.1.9:7011/multitenancy/wallet/${walletID}/token`;
+        const url = `http://103.52.192.245:7011/multitenancy/wallet/${walletID}/token`;
         console.log(`Requesting URL: ${url}`);
 
         const response = await axios.post(url);

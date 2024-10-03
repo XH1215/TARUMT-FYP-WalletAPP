@@ -32,7 +32,7 @@ class _ViewStoredCredentialScreenState
       try {
         devtools.log("Fetching stored credentials... ${user.email}");
         final response = await http.post(
-          Uri.parse('http://192.168.1.9:4000/api/receiveExistedCredential'),
+          Uri.parse('http://103.52.192.245:4000/api/receiveExistedCredential'),
           headers: {
             'Content-Type': 'application/json',
           },
