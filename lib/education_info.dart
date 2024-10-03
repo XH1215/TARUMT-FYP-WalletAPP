@@ -100,7 +100,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.9:4000/api/getCVEducation?accountID=$accountID'),
+            'http://172.16.20.25:4000/api/getCVEducation?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -255,7 +255,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/saveCVEducation'),
+        Uri.parse('http://172.16.20.25:4000/api/saveCVEducation'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -296,12 +296,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     if (eduBacID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://192.168.1.9:4000/api/deleteCVEducation'),
+          Uri.parse('http://172.16.20.25:4000/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://192.168.1.9:3010/api/deleteCVEducation'),
+          Uri.parse('http://172.16.20.25:3010/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );

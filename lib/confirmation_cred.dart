@@ -17,6 +17,37 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   String? noDataMessage;
   String? authToken; // Store authToken globally after fetching
 
+//let sainoforce know the status
+  Future<void> sendMessage(String message, credential) async {
+    final url = Uri.parse('http://172.16.20.25:3010/api/UpdateStatus');
+    devtools.log("Message Send");
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json', // Set the content type to JSON
+        },
+        body: json.encode({
+          'message': message,
+          'credential': credential // Pass the message as a JSON body
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Request was successful
+        final responseData = json.decode(response.body);
+        devtools.log('Message sent successfully: $responseData');
+      } else {
+        // Handle the error
+        devtools.log(
+            'Failed to send message. Status code: ${response.statusCode} + ${response.body}');
+      }
+    } catch (error) {
+      // Handle exceptions
+      devtools.log('Error sending message: $error');
+    }
+  }
+
   Future<void> fetchCredentials() async {
     setState(() {
       isLoading = true;
@@ -33,7 +64,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
         // Step 1: Call getWalletData API
         final walletResponse = await http.post(
-          Uri.parse('http://192.168.1.9:4000/api/getWalletData'),
+          Uri.parse('http://172.16.20.25:4000/api/getWalletData'),
           headers: {
             'Content-Type': 'application/json',
           },
@@ -58,7 +89,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             devtools.log("Step2: Initiating getAuthToken call...");
 
             final tokenResponse = await http.post(
-              Uri.parse('http://192.168.1.9:4000/api/getAuthToken'),
+              Uri.parse('http://172.16.20.25:4000/api/getAuthToken'),
               headers: {
                 'Content-Type': 'application/json',
               },
@@ -74,7 +105,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               devtools.log("Step3: Fetching credentials using authToken...");
 
               final credentialsResponse = await http.post(
-                Uri.parse('http://192.168.1.9:4000/api/receiveOffer'),
+                Uri.parse('http://172.16.20.25:4000/api/receiveOffer'),
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization':
@@ -163,7 +194,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     try {
       devtools.log("Calling storeCredential and saveCVCertification API...");
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/storeCredential'),
+        Uri.parse('http://172.16.20.25:4000/api/storeCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -191,7 +222,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       //------------------------------------------
       // Step 1: Call saveCVCertification API
       final saveToDB = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/saveCVCertification'),
+        Uri.parse('http://172.16.20.25:4000/api/saveCVCertification'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -233,7 +264,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
       // Call the delete API with POST method
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/deleteCredential'),
+        Uri.parse('http://172.16.20.25:4000/api/deleteCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -274,9 +305,11 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
+        backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('Pending Credentials',
-            style: AppWidget.headlineTextFieldStyle()),
+        title: const Text(
+          'Pending Credentials',
+        ),
       ),
       body: Center(
         child: isLoading
@@ -337,6 +370,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                                                   'Received credential: ${credential['cred_ex_id']}');
                                               storeCredential(
                                                   credential); // Pass the entire credential object
+                                              sendMessage("Credential Accepted",
+                                                  credential);
                                             },
                                             child: const Text('Receive'),
                                           ),
@@ -347,6 +382,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                                                   'Denied credential: ${credential['cred_ex_id']}');
                                               deleteCredential(credential[
                                                   'cred_ex_id']); // Call deleteCredential function
+                                              sendMessage("Credential Rejected",
+                                                  credential);
                                             },
                                             child: const Text('Deny'),
                                           ),
@@ -361,17 +398,5 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               ),
       ),
     );
-  }
-}
-
-class AppWidget {
-  static TextStyle headlineTextFieldStyle() {
-    return const TextStyle(
-        color: Color(0xFF171B63), fontSize: 20.0, fontWeight: FontWeight.bold);
-  }
-
-  static TextStyle semiBoldTextFieldStyle() {
-    return const TextStyle(
-        color: Color(0xFF171B63), fontSize: 16.0, fontWeight: FontWeight.w600);
   }
 }

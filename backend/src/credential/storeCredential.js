@@ -1,7 +1,7 @@
 const axios = require('axios');
 const sql = require('mssql');
 const dbConfig = require('../config/dbConfigWallet');
-const acaPyBaseUrl = 'http://192.168.1.9:7011';
+const acaPyBaseUrl = 'http://172.16.20.25:7011';
 
 // Initialize SQL connection pool
 let poolPromise = sql.connect(dbConfig)

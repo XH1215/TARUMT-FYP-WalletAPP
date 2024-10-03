@@ -1,4 +1,5 @@
 import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
+import 'package:firstly/signup.dart';
 import 'package:firstly/welcome.dart';
 import 'package:flutter/material.dart';
 import 'account.dart';
@@ -26,13 +27,17 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
-        '/': (context) => const HomePage(),  // Start with HomePage to check login
+        '/': (context) =>
+            const HomePage(), // Start with HomePage to check login
         profileInfoRoute: (context) => const ProfileInfoPage(),
         educationInfoRoute: (context) => const EducationInfoPage(),
         workInfoRoute: (context) => const WorkInfoPage(),
         qualiInfoRoute: (context) => const Credential2(),
         softSkillInfoRoute: (context) => const SoftSkillInfoPage(),
-        welcomeRoute: (context) => const WelcomePage(),  // Ensure login route is defined
+        welcomeRoute: (context) =>
+            const WelcomePage(), // Ensure login route is defined
+        '/signup': (context) => const SignUpPage(),
+        '/homePage': (context) => const HomePage(),
       },
     );
   }
@@ -48,7 +53,8 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   bool _isLoggedIn = false; // Track login status
-  final MSSQLAuthProvider _authProvider = MSSQLAuthProvider(); // MSSQLAuthProvider instance
+  final MSSQLAuthProvider _authProvider =
+      MSSQLAuthProvider(); // MSSQLAuthProvider instance
 
   static final List<Widget> _pages = <Widget>[
     const SelfCredentialPage1(),
@@ -60,7 +66,7 @@ class HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();  // Check login on widget initialization
+    _checkLoginStatus(); // Check login on widget initialization
   }
 
   void _checkLoginStatus() async {

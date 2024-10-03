@@ -72,8 +72,10 @@ class _LoginViewState extends State<LoginView> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
         );
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const HomePage()),
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/homePage', // Replace this with your actual bottom navigation route
+          (Route<dynamic> route) => false, // Removes all previous routes
         );
       } else {
         devtools.log('Login failed');

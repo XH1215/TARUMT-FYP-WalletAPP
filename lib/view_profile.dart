@@ -79,7 +79,7 @@ class _ViewProfileState extends State<ViewProfile> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9:4000/api/getProfile?accountID=$accountID'),
+        Uri.parse('http://10.0.2.2:4000/api/getProfile?accountID=$accountID'),
       );
 
       devtools.log('Response status: ${response.statusCode}');
@@ -115,7 +115,7 @@ class _ViewProfileState extends State<ViewProfile> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.9:4000/api/getAccountEmail?accountID=$accountID'),
+            'http://10.0.2.2:4000/api/getAccountEmail?accountID=$accountID'),
       );
 
       devtools.log('Response status for email: ${response.statusCode}');
@@ -158,7 +158,7 @@ class _ViewProfileState extends State<ViewProfile> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/saveProfile'),
+        Uri.parse('http://10.0.2.2:4000/api/saveProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -358,12 +358,12 @@ class _ViewProfileState extends State<ViewProfile> {
             style: isEnabled
                 ? AppWidget.semiBoldTextFieldStyle()
                 : AppWidget.savedTextFieldStyle(),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
+                  EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
               border: InputBorder.none,
               hintText: 'IC Number',
-              hintStyle: const TextStyle(
+              hintStyle: TextStyle(
                 color: Colors.grey,
                 fontSize: 16.0,
                 fontWeight: FontWeight.w600,
@@ -405,12 +405,12 @@ class _ViewProfileState extends State<ViewProfile> {
             style: isEnabled
                 ? AppWidget.semiBoldTextFieldStyle()
                 : AppWidget.savedTextFieldStyle(),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
+                  EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
               border: InputBorder.none,
               hintText: 'Mobile Phone (Eg: 01xxxxxxxx)',
-              hintStyle: const TextStyle(
+              hintStyle: TextStyle(
                 color: Colors.grey,
                 fontSize: 16.0,
                 fontWeight: FontWeight.w600,
@@ -419,7 +419,7 @@ class _ViewProfileState extends State<ViewProfile> {
             keyboardType: TextInputType.phone,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
+              LengthLimitingTextInputFormatter(11),
             ],
           ),
         ),
@@ -437,8 +437,8 @@ class _ViewProfileState extends State<ViewProfile> {
   String? _validatePhoneNumber(String phoneNumber) {
     if (phoneNumber.isEmpty) {
       return 'Mobile Phone cannot be empty';
-    } else if (!RegExp(r'^01\d{8}$').hasMatch(phoneNumber)) {
-      return 'Invalid Phone Number. It should start with 01 and be 10 digits long.';
+    } else if (!RegExp(r'^01\d{8,9}$').hasMatch(phoneNumber)) {
+      return 'Invalid Phone Number.';
     }
     return null;
   }

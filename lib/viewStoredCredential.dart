@@ -32,7 +32,7 @@ class _ViewStoredCredentialScreenState
       try {
         devtools.log("Fetching stored credentials... " + user.email);
         final response = await http.post(
-          Uri.parse('http://192.168.1.9:4000/api/receiveExistedCredential'),
+          Uri.parse('http://172.16.20.25:4000/api/receiveExistedCredential'),
           headers: {
             'Content-Type': 'application/json',
           },
@@ -46,10 +46,10 @@ class _ViewStoredCredentialScreenState
             storedCredentials = data['credentials'] ?? [];
             isLoading = false;
           });
-        } else if (response.statusCode == 201) {
+        } else if (response.statusCode == 404) {
           setState(() {
             isLoading = false;
-            noDataMessage = "No credential offers found.";
+            noDataMessage = "No stored credentials found.";
           });
         } else {
           setState(() {
@@ -126,14 +126,37 @@ class _ViewStoredCredentialScreenState
                                 itemCount: storedCredentials.length,
                                 itemBuilder: (context, index) {
                                   final credential = storedCredentials[index];
+                                  final String status = credential['status'];
+                                  final Color statusColor = status == 'Accepted'
+                                      ? Colors.green
+                                      : Colors.red;
+
                                   return Card(
                                     margin: const EdgeInsets.symmetric(
                                         vertical: 8.0, horizontal: 16.0),
                                     child: ListTile(
-                                      title: Text(
-                                          'Title: ${credential['attrs']['did']}'), // Updated line
-                                      subtitle: Text(
-                                        'Description:\n${credential['attrs']['description']}',
+                                      title:
+                                          Text('Name: ${credential['name']}'),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Email: ${credential['email']}'),
+                                          Text('Type: ${credential['type']}'),
+                                          Text(
+                                              'Issuer: ${credential['issuer']}'),
+                                          Text(
+                                              'Description: ${credential['description']}'),
+                                          Text(
+                                              'Acquired Date: ${credential['acquiredDate']}'),
+                                          Text(
+                                            'Status: $status',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: statusColor,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   );

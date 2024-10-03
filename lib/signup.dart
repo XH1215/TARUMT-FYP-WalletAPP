@@ -60,8 +60,12 @@ class _SignUpPageState extends State<SignUpPage> {
     });
   }
 
+  final emailRegex = RegExp(
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+  );
+
   Future<void> _register(String email, String password) async {
-    if (!email.contains('@')) {
+    if (!emailRegex.hasMatch(email)) {
       _showErrorDialog('Please enter a valid email address.');
       return;
     }
@@ -71,14 +75,16 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    // Regular expression to check if the password contains at least one uppercase letter,
-    // one lowercase letter, one digit, and one special character.
     final passwordRegExp =
         RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@_$!%*?&#]).{8,}$');
 
     if (!passwordRegExp.hasMatch(password)) {
       _showErrorDialog(
-          'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 symbol.');
+          '''Password must be at least 8 characters long and contain at least: 
+      -1 uppercase letter
+      -1 lowercase letter
+      -1 digit
+      -1 symbol''');
       return;
     }
 
@@ -89,7 +95,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/register'),
+        Uri.parse('http://172.16.20.114:4000/api/register'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -156,7 +162,7 @@ class _SignUpPageState extends State<SignUpPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Error'),
+          title: const Text('Notice'),
           content: Text(message),
           actions: <Widget>[
             TextButton(
@@ -273,7 +279,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                   ),
                   child: _isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(

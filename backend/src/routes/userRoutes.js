@@ -5,6 +5,7 @@ const { login, register, logout, verifyPassword, changePassword} = require('../c
 
 
 const { createWalletandDID } = require('../credential/acapyRegister');
+const { UpdateActive } = require('../credential/updateActive');
 const { receiveConnection } = require('../credential/receiveConnection');
 const { receiveOffer } = require('../credential/receiveOffer');
 const { getAuthToken, storeCredential, getWalletData } = require('../credential/storeCredential');
@@ -49,6 +50,7 @@ router.post('/backdoorReset', backdoorReset);
 
 // Receive Credential fromIssuer
 router.post('/createWalletandDID', createWalletandDID);
+router.post('/UpdateActive', UpdateActive);
 router.post('/receiveConnection', receiveConnection);
 router.post('/receiveOffer', receiveOffer);
 router.post('/getAuthToken', getAuthToken);

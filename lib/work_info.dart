@@ -125,7 +125,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9:4000/api/getCVWork?accountID=$accountID'),
+        Uri.parse('http://172.16.20.25:4000/api/getCVWork?accountID=$accountID'),
         headers: {'Content-Type': 'application/json'},
       );
       if(!mounted) return;
@@ -411,7 +411,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     try {
       // Make the request to save work entries
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:4000/api/saveCVWork'),
+        Uri.parse('http://172.16.20.25:4000/api/saveCVWork'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -521,13 +521,13 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     if (WorkExpID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://192.168.1.9:4000/api/deleteCVWork'),
+          Uri.parse('http://172.16.20.25:4000/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );
 
         final response2 = await http.post(
-          Uri.parse('http://192.168.1.9:3010/api/deleteCVWork'),
+          Uri.parse('http://172.16.20.25:3010/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );
