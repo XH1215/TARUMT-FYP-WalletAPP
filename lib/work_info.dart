@@ -548,7 +548,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
         );
 
         final response2 = await http.post(
-          Uri.parse('http://172.16.20.25:3010/api/deleteCVWork'),
+          Uri.parse('http://172.16.20.25:3011/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );

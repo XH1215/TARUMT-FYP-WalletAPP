@@ -410,7 +410,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
           body: jsonEncode({'EduBacID': eduBacID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://172.16.20.25:3010/api/deleteCVEducation'),
+          Uri.parse('http://172.16.20.25:3011/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );

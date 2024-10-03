@@ -19,7 +19,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
 //let sainoforce know the status
   Future<void> sendMessage(String message, credential) async {
-    final url = Uri.parse('http://172.16.20.25:3010/api/UpdateStatus');
+    final url = Uri.parse('http://172.16.20.25:3011/api/UpdateStatus');
     devtools.log("Message Send");
     try {
       final response = await http.post(
