@@ -217,7 +217,7 @@ module.exports.saveCVProfile = async (req, res) => {
         console.log("PerID:", PerID);
 
         // Call the second API, passing the PerID and other profile data
-        const secondApiUrl = 'http://localhost:3011/api/saveCVProfile';
+        const secondApiUrl = 'http://172.16.20.25:3011/api/saveCVProfile';
         const profileData = { ...req.body, PerID }; // Add PerID to profile data
 
         try {
@@ -426,7 +426,7 @@ module.exports.saveCVEducation = async (req, res) => {
         console.log("educationEntries: " + educationEntries[0].start_date);
 
 
-        const secondApiUrl = 'http://localhost:3011/api/saveCVEducation';
+        const secondApiUrl = 'http://172.16.20.25:3011/api/saveCVEducation';
         const secondApiData = { ...req.body, educationEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -505,7 +505,7 @@ module.exports.deleteCVEducation = async (req, res) => {
         if (deleteResult.rowsAffected[0] > 0) {
             // Return 200 status code for successful deletion
 
-            const secondApiUrl = 'http://localhost:3011/api/deleteCVEducation';
+            const secondApiUrl = 'http://172.16.20.25:3011/api/deleteCVEducation';
 
 
             try {
@@ -622,7 +622,7 @@ module.exports.saveCVWork = async (req, res) => {
         const workEntries = [...existingWorkEntries, ...newWorkWithID];
         console.log(workEntries[0]);
 
-        const secondApiUrl = 'http://localhost:3011/api/saveCVWork';
+        const secondApiUrl = 'http://172.16.20.25:3011/api/saveCVWork';
         const secondApiData = { ...req.body, workEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -704,7 +704,7 @@ module.exports.deleteCVWork = async (req, res) => {
             await pool.request()
                 .input('WorkExpID', sql.Int, WorkExpID)
                 .query('DELETE FROM Work WHERE WorkExpID = @WorkExpID');
-            const secondApiUrl = 'http://localhost:3011/api/deleteCVWork';
+            const secondApiUrl = 'http://172.16.20.25:3011/api/deleteCVWork';
 
 
             try {
@@ -766,7 +766,7 @@ module.exports.saveCVCertification = async (req, res) => {
         const CerID = result.recordset[0].CerID;
 
         // Call the second function and pass the necessary data
-        const secondApiUrl = 'http://localhost:3011/api/saveCVCertification'; // Update with the actual URL if needed
+        const secondApiUrl = 'http://172.16.20.25:3011/api/saveCVCertification'; // Update with the actual URL if needed
         const secondApiData = {
             accountID,  // Account ID to be used as StudentAccID in the second function
             CerID,      // CerID from the first function passed as RefID in the second function
@@ -806,6 +806,39 @@ module.exports.saveCVCertification = async (req, res) => {
 
     } catch (error) {
         console.error('Error saving certification:', error.message);
+        res.status(500).send('Server error');
+    }
+};
+
+
+module.exports.getCVCertifications = async (req, res) => {
+    const { accountID } = req.body;
+
+    // Validate input
+    if (!accountID) {
+        return res.status(400).send('Account ID is required');
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Fetch all certifications for the given accountID
+        const result = await pool.request()
+            .input('AccountID', sql.Int, accountID)
+            .query(`
+                SELECT CerID, CerName, CerEmail, CerType, CerIssuer, CerDescription, CerAcquiredDate, IsPublic
+                FROM Certification
+                WHERE AccountID = @AccountID
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).send('No certifications found for this account');
+        }
+
+        // Return the list of certifications
+        res.status(200).json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching certifications:', error.message);
         res.status(500).send('Server error');
     }
 };
@@ -872,7 +905,7 @@ module.exports.saveCVSkill = async (req, res) => {
         }
 
         const skillEntries = [...existingSkillEntries, ...newSkillsWithID];
-        const secondApiUrl = 'http://localhost:3011/api/saveCVSkill';
+        const secondApiUrl = 'http://172.16.20.25:3011/api/saveCVSkill';
         const secondApiData = { ...req.body, skillEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -955,7 +988,7 @@ module.exports.deleteCVSkill = async (req, res) => {
         await pool.request()
             .input('SoftID', sql.Int, SoftID)
             .query('DELETE FROM SoftSkill WHERE SoftID = @SoftID');
-        const secondApiUrl = 'http://localhost:3011/api/deleteCVSkill';
+        const secondApiUrl = 'http://172.16.20.25:3011/api/deleteCVSkill';
 
 
         try {
@@ -1051,8 +1084,8 @@ module.exports.updateCertificationStatus = async (req, res) => {
 
         // Determine the external API URL based on the isPublic value
         const apiUrl = isPublic
-            ? 'http://localhost:3011/api/updateCVCertification'
-            : 'http://localhost:3011/api/deleteCVCertification';
+            ? 'http://172.16.20.25:3011/api/updateCVCertification'
+            : 'http://172.16.20.25:3011/api/deleteCVCertification';
         console.log(apiUrl);
         // Prepare the certification object for the external API call
         const certData = {
@@ -1425,7 +1458,7 @@ module.exports.showDetailsQR = async (req, res) => {
         CONVERT(VARCHAR(10), CerAcquiredDate, 120) AS acquiredDate,
         IsPublic AS isPublic
     FROM Certification 
-    WHERE AccountID = @accountID 
+    WHERE AccountID = @accountID AND Active = 1
 `;
 
         const certificationResult = await pool.request()

@@ -279,9 +279,7 @@ class _ViewCVState extends State<ViewCV> {
 
   // Display certifications information
   Widget _buildCertificationSection(List<dynamic> certifications) {
-    if (certifications.isEmpty) {
-      return const Text("No public certifications available.");
-    }
+
 
     return Column(
       children: certifications.map((cert) {

@@ -41,7 +41,7 @@ class Credential2State extends State<Credential2> {
           Uri.parse(
               'http://172.16.20.25:4000/api/getCertifications?accountID=$accountID'),
         );
-        if(!mounted) return;
+        if (!mounted) return;
         if (response.statusCode == 200) {
           final Map<String, dynamic> data = json.decode(response.body);
           final List<dynamic> certifications = data['certifications'];
@@ -82,18 +82,24 @@ class Credential2State extends State<Credential2> {
     try {
       final accountID = await _getAccountID();
       if (accountID != null) {
-        final isPublic =
-            _isPublicList[index] ? 1 : 0; // Convert bool to int (1 or 0)
+        final CerID = _certifications[index]['CerID']; // Extract CerID
+        final isPublic = _isPublicList[index] ? 1 : 0; // Convert bool to int
 
         final certificationData =
             Map<String, dynamic>.from(_certifications[index]);
         certificationData['isPublic'] = isPublic;
+
+        // Log the payload for debugging
         devtools.log(certificationData.toString());
+
+        // Call the backend with the updated certification data
         final response = await http.post(
           Uri.parse('http://172.16.20.25:4000/api/updateCertificationStatus'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'accountID': accountID,
+            'CerID': CerID, // Pass CerID
+            'isPublic': isPublic, // Pass isPublic
             'certification':
                 certificationData, // Pass entire certification data
           }),
@@ -148,6 +154,7 @@ class Credential2State extends State<Credential2> {
                   itemCount: _certifications.length,
                   itemBuilder: (context, index) {
                     final certification = _certifications[index];
+                    final isActive = certification['Active'] == true;
 
                     return Container(
                       margin: const EdgeInsets.symmetric(
@@ -201,30 +208,45 @@ class Credential2State extends State<Credential2> {
                             'Certification Acquire Date: ${certification['CertificationAcquireDate'] ?? 'N/A'}',
                             style: const TextStyle(fontSize: 16.0),
                           ),
-                          Row(
-                            children: [
-                              Theme(
-                                data: ThemeData(
-                                  unselectedWidgetColor: _isLoading
-                                      ? Colors.grey // Disable color
-                                      : null,
-                                ),
-                                child: Checkbox(
-                                  value: _isPublicList[index],
-                                  onChanged: _isLoading
-                                      ? null // Disable checkbox when loading
-                                      : (bool? value) {
-                                          setState(() {
-                                            _isPublicList[index] =
-                                                value ?? false;
-                                          });
-                                          _updatePublicStatus(index);
-                                        },
-                                ),
-                              ),
-                              const Text('Public'),
-                            ],
+                          const SizedBox(height: 15.0),
+                          // Status text based on 'Active' value
+                          Text(
+                            isActive
+                                ? 'Status: Accepted'
+                                : 'Status: Deleted by Issuer',
+                            style: TextStyle(
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.bold,
+                              color: isActive
+                                  ? Colors.green
+                                  : Colors.red, // Color based on status
+                            ),
                           ),
+                          if (isActive)
+                            Row(
+                              children: [
+                                Theme(
+                                  data: ThemeData(
+                                    unselectedWidgetColor: _isLoading
+                                        ? Colors.grey // Disable color
+                                        : null,
+                                  ),
+                                  child: Checkbox(
+                                    value: _isPublicList[index],
+                                    onChanged: _isLoading
+                                        ? null // Disable checkbox when loading
+                                        : (bool? value) {
+                                            setState(() {
+                                              _isPublicList[index] =
+                                                  value ?? false;
+                                            });
+                                            _updatePublicStatus(index);
+                                          },
+                                  ),
+                                ),
+                                const Text('Public'),
+                              ],
+                            ),
                         ],
                       ),
                     );
