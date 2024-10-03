@@ -54,6 +54,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
   final List<bool> _isPublicList = [];
   bool _isEditing = false;
   bool _isLoading = false;
+  bool hasError = false;
 
   final List<String?> _levelOfEducationErrors = [];
   final List<String?> _fieldOfStudyErrors = [];
@@ -123,7 +124,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://103.52.192.245:4000/api/getCVEducation?accountID=$accountID'),
+            'http://192.168.1.36:4000/api/getCVEducation?accountID=$accountID'),
       );
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -241,7 +242,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     if (accountID == null) return;
     if (!mounted) return;
 
-    bool hasError = false;
+    hasError = false;
 
     // Validate input fields for each education entry
     for (int i = 0; i < _educationEntries.length; i++) {
@@ -292,11 +293,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       }
     }
 
-    // Update the UI to reflect validation errors
-    setState(() {});
-
     // Stop the save process if there are validation errors
-    if (hasError) return;
+    if (hasError) {
+      _isEditing = true; // End edit mode after saving if no errors
+
+      return;
+    }
 
     // Proceed with saving the entries if no errors
     List<Map<String, dynamic>> newEducationEntries = [];
@@ -308,18 +310,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       String level = _selectedLevels[i]?.toUpperCase() ?? '';
       String fieldOfStudy = _fieldOfStudyControllers[i].text.toUpperCase();
       String instituteName = _instituteNameControllers[i].text.toUpperCase();
+
       String uniqueKey = '$level-$fieldOfStudy-$instituteName';
-
-      // Ensure there are no duplicate entries
-      if (entrySet.contains(uniqueKey)) {
-        showErrorDialog(
-          context,
-          'Duplicate entry for education entry ${i + 1}. Please modify or remove it.',
-        );
-        return;
-      }
-
-      entrySet.add(uniqueKey);
 
       final entry = {
         'EduBacID': _educationEntries[i]['eduBacID'],
@@ -334,6 +326,20 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         'isPublic': _isPublicList[i],
       };
 
+      // Ensure there are no duplicate entries
+      if (entrySet.contains(uniqueKey)) {
+        showErrorDialog(
+          context,
+          'Duplicate entry for education entry ${i + 1}.',
+        );
+        hasError = true;
+        _isEditing = true; // End edit mode after saving if no errors
+
+        return;
+      }
+
+      entrySet.add(uniqueKey);
+
       // Separate new entries from existing ones for processing
       if (_educationEntries[i]['eduBacID'] == null) {
         newEducationEntries.add(entry);
@@ -342,6 +348,8 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
         existingEducationEntries.add(entry);
       }
     }
+
+    if (hasError) return;
 
     // Show loading state
     setState(() {
@@ -358,7 +366,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       // Make the request to save education entries
       final response = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/saveCVEducation'),
+        Uri.parse('http://192.168.1.36:4000/api/saveCVEducation'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -405,12 +413,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     if (eduBacID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://103.52.192.245:4000/api/deleteCVEducation'),
+          Uri.parse('http://192.168.1.36:4000/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://103.52.192.245:6011/api/deleteCVEducation'),
+          Uri.parse('http://192.168.1.36:3011/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
@@ -470,30 +478,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
       try {
         // Perform save operation here
         await _saveEducationEntries();
-
-        // Check if there are any validation errors
-        bool hasError = false;
-        for (int i = 0; i < _educationEntries.length; i++) {
-          if (_levelOfEducationErrors[i] != null ||
-              _fieldOfStudyErrors[i] != null ||
-              _instituteNameErrors[i] != null ||
-              _instituteCountryErrors[i] != null ||
-              _instituteStateErrors[i] != null ||
-              _instituteCityErrors[i] != null ||
-              _startDateErrors[i] != null ||
-              _endDateErrors[i] != null ||
-              _dateValidationErrors[i] != null) {
-            hasError = true;
-            break;
-          }
-        }
-
-        // Only exit edit mode if there are no errors
-        if (!hasError && mounted) {
-          setState(() {
-            _isEditing = false; // End edit mode after saving if no errors
-          });
-        }
+        if (!mounted) return;
       } catch (error) {
         // Handle any errors during save
         devtools.log('Error saving data: $error');

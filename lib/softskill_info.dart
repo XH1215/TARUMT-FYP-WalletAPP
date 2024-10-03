@@ -88,7 +88,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://103.52.192.245:4000/api/getCVSkill?accountID=$accountID'),
+            'http://192.168.1.36:4000/api/getCVSkill?accountID=$accountID'),
       );
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -191,12 +191,14 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
           _skillNameErrors[i] = 'Skill name cannot be empty.';
         });
         hasError = true;
+        //break;
       }
       if (currentDescription.isEmpty) {
         setState(() {
           _descriptionErrors[i] = 'Description cannot be empty.';
         });
         hasError = true;
+        //break;
       }
 
       final entry = {
@@ -235,7 +237,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/saveCVSkill'),
+        Uri.parse('http://192.168.1.36:4000/api/saveCVSkill'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -282,7 +284,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     if (softID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://103.52.192.245:4000/api/deleteCVSkill'),
+          Uri.parse('http://192.168.1.36:4000/api/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'SoftID': softID}),
         );
@@ -332,6 +334,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
       try {
         await _saveSkills();
+        if (!mounted) return;
       } catch (error) {
         devtools.log('Error saving data: $error');
       } finally {
@@ -460,28 +463,48 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     );
   }
 
-  Widget _buildInputField(BuildContext context, String labelText,
-      TextEditingController controller, bool isEditing, String? errorMessage) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(labelText, style: AppWidget.semiBoldTextFieldStyle()),
-        const SizedBox(height: 10.0),
-        TextField(
-          controller: controller,
-          enabled: isEditing,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-          decoration: InputDecoration(
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
-            errorText: errorMessage, // Show error text under the field
-          ),
+  Widget _buildInputField(
+      BuildContext context, String labelText, TextEditingController controller,
+      [bool isEditable = true, String? errorMessage]) {
+    return TextField(
+      controller: controller,
+      enabled: isEditable,
+      style: AppWidget.semiBoldTextFieldStyle(),
+      decoration: InputDecoration(
+        labelText: labelText,
+        errorText: errorMessage,
+        labelStyle: const TextStyle(color: Colors.black),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.blue),
         ),
+        enabledBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkillEntry(BuildContext context, int index) {
+    return Column(
+      children: [
+        _buildInputField(context, 'Skill Name', _softSkillControllers[index],
+            _isEditing, _skillNameErrors[index]),
+        const SizedBox(height: 10),
+        _buildInputField(context, 'Description', _descriptionControllers[index],
+            _isEditing, _descriptionErrors[index]),
+        const SizedBox(height: 10),
+        if (_isEditing)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () {
+                  _deleteSkillEntry(index);
+                },
+              ),
+            ],
+          ),
       ],
     );
   }

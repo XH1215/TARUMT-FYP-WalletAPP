@@ -141,7 +141,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://103.52.192.245:4000/api/getCVWork?accountID=$accountID'),
+            'http://192.168.1.36:4000/api/getCVWork?accountID=$accountID'),
         headers: {'Content-Type': 'application/json'},
       );
       if (!mounted) return;
@@ -360,7 +360,10 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       }
 
       // If there are any errors, return and stop the save process
-      if (hasError) return;
+      if (hasError) {
+        _isEditing = true;
+        return;
+      }
     });
 
     // If no errors, proceed with saving the work entries
@@ -400,8 +403,8 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       // Check for duplicate job title and company name
       if (entrySet.contains(uniqueKey)) {
         hasError = true;
-        showErrorDialog(context,
-            'Duplicate entry for work entry ${i + 1}. Please modify or remove it.');
+        showErrorDialog(context, 'Duplicate entry for work entry ${i + 1}.');
+        _isEditing = true;
         return;
       }
 
@@ -415,8 +418,10 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       }
     }
 
-    if (hasError) return;
-
+    if (hasError) {
+      _isEditing = true;
+      return;
+    }
     // Show loading state
     setState(() {
       _isLoading = true;
@@ -432,7 +437,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     try {
       // Make the request to save work entries
       final response = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/saveCVWork'),
+        Uri.parse('http://192.168.1.36:4000/api/saveCVWork'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -476,17 +481,16 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
       try {
         // Perform save operation here
         await _saveWorkEntries();
-
-        setState(() {
-          _isEditing = true; // End edit mode after saving
-        });
+        if (!mounted) return;
       } catch (error) {
         // Handle any errors during save
         devtools.log('Error saving data: $error');
       } finally {
-        setState(() {
-          _isLoading = false; // Stop loading indicator after save completes
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false; // Stop loading indicator after save completes
+          });
+        }
       }
     } else {
       setState(() {
@@ -542,13 +546,13 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     if (WorkExpID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://103.52.192.245:4000/api/deleteCVWork'),
+          Uri.parse('http://192.168.1.36:4000/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );
 
         final response2 = await http.post(
-          Uri.parse('http://103.52.192.245:6011/api/deleteCVWork'),
+          Uri.parse('http://192.168.1.36:3011/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );
