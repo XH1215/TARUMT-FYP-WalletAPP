@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 const sql = require('mssql');
 const dbConfig = require('../config/dbConfigWallet'); // Assuming correct db config
 const axios = require('axios');
@@ -61,7 +69,7 @@ async function UpdateActive(req, res) {
 
             // Send the updated data to the backend
             await axios.post(
-                `http://103.52.192.245:6011/api/deleteCVCertification`,
+                `http://172.16.20.26:3010/api/deleteCVCertification`,
                 {
                     accountID: AccountID,
                     CerID: CerID,

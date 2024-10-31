@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 const axios = require('axios');
 const { getAuthToken, getWalletData } = require('./receiveConnection'); // Import functions from receiveConnection.js
 
@@ -17,7 +25,7 @@ async function receiveOffer(req, res) {
 
         // Fetch all credential offers from the ACA-Py agent (holder's side)
         const recordsResponse = await axios.get(
-            'http://103.52.192.245:7011/issue-credential-2.0/records',
+            'http://172.16.20.26:7011/issue-credential-2.0/records',
             {
                 headers: {
                     Authorization: `Bearer ${jwtToken}`,  // Use the retrieved JWT token

@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_provider.dart';
@@ -7,7 +15,7 @@ import 'dart:developer' as devtools show log;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MSSQLAuthProvider implements AuthProvider {
-  final String baseUrl = "http://103.52.192.245:4000/api";
+  final String baseUrl = "http://172.16.20.26:4000/api";
 
   AuthUser? _currentUser;
 
@@ -234,7 +242,7 @@ class MSSQLAuthProvider implements AuthProvider {
   // Function to fetch CV data by QR ID
   Future<Map<String, dynamic>> fetchCVDataByQRCode(int qrId) async {
     final url = Uri.parse(
-        'http://103.52.192.245:4000/api/fetchCVByQRCode'); // Change to actual API URL
+        'http://172.16.20.26:4000/api/fetchCVByQRCode'); // Change to actual API URL
     final response = await http.post(
       url,
       headers: {

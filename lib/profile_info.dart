@@ -1,6 +1,14 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'dart:io';
 import 'dart:convert';
-import 'package:firstly/show_error_dialog.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +18,8 @@ import 'dart:developer' as devtools show log;
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 import 'dart:math';
+
+import 'package:firstly/show_error_dialog.dart';
 
 class ProfileInfoPage extends StatefulWidget {
   const ProfileInfoPage({super.key});
@@ -75,7 +85,8 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://103.52.192.245:4000/api/getCVProfile?accountID=$accountID'),
+        Uri.parse(
+            'http://172.16.20.26:4000/api/getCVProfile?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -126,7 +137,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://103.52.192.245:4000/api/getPersonDetails?accountID=$accountID'),
+            'http://172.16.20.26:4000/api/getPersonDetails?accountID=$accountID'),
       );
 
       if (response.statusCode == 200) {
@@ -202,7 +213,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
   Future<void> _saveCVProfile() async {
     final accountID = await _getAccountID() ?? 0;
-
+    bool hasError = false;
     Uint8List? imageBytes;
     if (_imageFile != null) {
       // Read the image file
@@ -289,14 +300,14 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
     try {
       // final response = await http.post(
-      //   Uri.parse('http://103.52.192.245:4000/api/saveCVProfile'),
+      //   Uri.parse('http://172.16.20.26:4000/api/saveCVProfile'),
       //   headers: <String, String>{
       //     'Content-Type': 'application/json; charset=UTF-8',
       //   },
       //   body: jsonEncode(profileData),
       // );
       // final response2 = await http.post(
-      //   Uri.parse('http://103.52.192.245:6011/api/saveCVProfile'),
+      //   Uri.parse('http://172.16.20.26:6011/api/saveCVProfile'),
       //   headers: <String, String>{
       //     'Content-Type': 'application/json; charset=UTF-8',
       //   },
@@ -316,7 +327,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       // }
 
       final response = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/saveCVProfile'),
+        Uri.parse('http://172.16.20.26:4000/api/saveCVProfile'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -346,8 +357,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
 
       devtools.log('Error saving profile data: $e');
       showErrorDialog(context, 'An error occurred while saving the profile.');
+      hasError = true;
     } finally {
-      if (mounted) {
+      if (mounted && !hasError) {
         // Check if the widget is still mounted
         setState(() {
           _isSaving = false; // Stop saving when done
@@ -374,12 +386,20 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     return null;
   }
 
+  String? _validateAge(String age) {
+    if (age.isEmpty) {
+      return 'Age cannot be empty.';
+    } else if (!RegExp(r'^\d+$').hasMatch(age)) {
+      return 'Invalid Age';
+    }
+    return null;
+  }
+
   void _validateFields() {
     setState(() {
       _errorMessages['name'] =
           _nameController.text.isEmpty ? 'Name cannot be empty.' : null;
-      _errorMessages['age'] =
-          _ageController.text.isEmpty ? 'Age cannot be empty.' : null;
+      _errorMessages['age'] = _validateAge(_ageController.text); //this line
       _errorMessages['email'] = _validateEmail(_emailController.text);
       _errorMessages['phone'] = _validatePhoneNumber(_phoneController.text);
       _errorMessages['address'] =

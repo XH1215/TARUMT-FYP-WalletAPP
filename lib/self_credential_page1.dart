@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:flutter/material.dart';
 import 'package:firstly/education_info.dart';
 import 'package:firstly/profile_info.dart';
@@ -6,7 +14,6 @@ import 'package:firstly/work_info.dart';
 import 'credential2.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as devtools show log;
-import 'dart:convert'; // for jsonDecode
 import 'package:http/http.dart' as http;
 
 class SelfCredentialPage1 extends StatefulWidget {
@@ -24,9 +31,12 @@ class _SelfCredentialPage1State extends State<SelfCredentialPage1>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance
-        .addObserver(this); // Add this line to listen for lifecycle changes
+    if (!mounted) return;
+    WidgetsBinding.instance.addObserver(this);
+    if (!mounted) return;
+    // Add this line to listen for lifecycle changes
     _fetchUserProfile();
+    if (!mounted) return;
   }
 
   @override
@@ -41,6 +51,7 @@ class _SelfCredentialPage1State extends State<SelfCredentialPage1>
     if (state == AppLifecycleState.resumed) {
       // Check the user profile when the app is resumed
       _fetchUserProfile();
+      if (!mounted) return;
     }
   }
 
@@ -60,8 +71,11 @@ class _SelfCredentialPage1State extends State<SelfCredentialPage1>
     setState(() {
       _isLoading = true; // Start loading
     });
+    if (!mounted) return;
 
     final accountID = await _getAccountID();
+    if (!mounted) return;
+
     if (accountID == null) {
       devtools.log('No accountID found');
       setState(() {
@@ -73,8 +87,9 @@ class _SelfCredentialPage1State extends State<SelfCredentialPage1>
     try {
       final response = await http.get(
         Uri.parse(
-            'http://103.52.192.245:4000/api/getCVProfile?accountID=$accountID'),
+            'http://172.16.20.26:4000/api/getCVProfile?accountID=$accountID'),
       );
+      if (!mounted) return;
 
       // Handle the response based on status code
       if (response.statusCode == 404) {

@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -40,7 +48,7 @@ Future<void> _checkForNewCredentials() async {
         return;
     }
 
-    final response = await http.get(Uri.parse('http://103.52.192.245:4000/api/receiveCredentials/$email'));
+    final response = await http.get(Uri.parse('http://172.16.20.26:4000/api/receiveCredentials/$email'));
 
     if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);

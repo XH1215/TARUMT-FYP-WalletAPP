@@ -1,9 +1,18 @@
-import 'package:firstly/show_error_dialog.dart';
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as devtools show log;
+
+import 'package:firstly/show_error_dialog.dart';
 
 class AppWidget {
   static TextStyle headlineTextFieldStyle() {
@@ -88,7 +97,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.36:4000/api/getCVSkill?accountID=$accountID'),
+            'http://172.16.20.26:4000/api/getCVSkill?accountID=$accountID'),
       );
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -237,7 +246,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.36:4000/api/saveCVSkill'),
+        Uri.parse('http://172.16.20.26:4000/api/saveCVSkill'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -284,7 +293,7 @@ class _SoftSkillInfoPageState extends State<SoftSkillInfoPage> {
     if (softID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://192.168.1.36:4000/api/deleteCVSkill'),
+          Uri.parse('http://172.16.20.26:4000/api/deleteCVSkill'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'SoftID': softID}),
         );

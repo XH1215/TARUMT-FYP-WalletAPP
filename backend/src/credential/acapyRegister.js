@@ -1,8 +1,16 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 const axios = require('axios');
 const sql = require('mssql');
 const crypto = require('crypto');
 // ACA-Py API endpoint configuration
-const acaPyBaseUrl = 'http://103.52.192.245:7011';  // Issuer API URL || holder is 7011
+const acaPyBaseUrl = 'http://172.16.20.26:7011';  // Issuer API URL || holder is 7011
 
 //-----------------------------------------------------------------------------//
 // Main function to create wallet and DID
@@ -69,7 +77,7 @@ async function storeWalletData(email, walletID, publicDid) {
 async function registerDIDatVon(DID, Verkey) {
     try {
         await axios.post(
-            `http://103.52.192.245:9000/register`,
+            `http://localhost:9000/register`,
             {
                 did: DID,
                 verkey: Verkey,

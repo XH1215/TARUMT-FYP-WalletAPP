@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert'; // For JSON decoding
@@ -35,7 +43,7 @@ class _ViewCVState extends State<ViewCV> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/showDetails'),
+        Uri.parse('http://172.16.20.26:4000/api/showDetails'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'accountID': accountID}),
       );

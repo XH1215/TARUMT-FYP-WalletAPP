@@ -1,9 +1,18 @@
-import 'package:firstly/show_error_dialog.dart';
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as devtools show log;
+
+import 'package:firstly/show_error_dialog.dart';
 
 class AppWidget {
   static TextStyle headlineTextFieldStyle() {
@@ -141,7 +150,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.36:4000/api/getCVWork?accountID=$accountID'),
+            'http://172.16.20.26:4000/api/getCVWork?accountID=$accountID'),
         headers: {'Content-Type': 'application/json'},
       );
       if (!mounted) return;
@@ -437,7 +446,7 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     try {
       // Make the request to save work entries
       final response = await http.post(
-        Uri.parse('http://192.168.1.36:4000/api/saveCVWork'),
+        Uri.parse('http://172.16.20.26:4000/api/saveCVWork'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -546,13 +555,13 @@ class _WorkInfoPageState extends State<WorkInfoPage> {
     if (WorkExpID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://192.168.1.36:4000/api/deleteCVWork'),
+          Uri.parse('http://172.16.20.26:4000/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );
 
         final response2 = await http.post(
-          Uri.parse('http://192.168.1.36:3011/api/deleteCVWork'),
+          Uri.parse('http://172.16.20.26:6011/api/deleteCVWork'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'WorkExpID': WorkExpID}),
         );

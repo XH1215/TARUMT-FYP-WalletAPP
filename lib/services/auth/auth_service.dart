@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_provider.dart';
 import 'auth_user.dart';

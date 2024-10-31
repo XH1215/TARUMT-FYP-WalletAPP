@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 const sql = require('mssql');
 const dbConfigWallet = require('../config/dbConfigWallet');
 let poolPromise = sql.connect(dbConfigWallet)
@@ -9,43 +17,6 @@ let poolPromise = sql.connect(dbConfigWallet)
         console.error('Database Connection Failed! Bad Config: ', err);
         process.exit(1);
     });
-
-
-// module.exports.backdoorReset = async (req, res) => {
-//     try {
-//         const pool = await poolPromise;
-
-//         // Start a transaction
-//         const transaction = pool.transaction();
-//         await transaction.begin();
-
-//         const request = transaction.request();
-
-//         // Execute delete queries for all the tables
-//         await request.query('DELETE FROM Education');
-//         await request.query('DELETE FROM Certification');
-//         await request.query('DELETE FROM Work');
-//         await request.query('DELETE FROM SoftSkill');
-//         await request.query('DELETE FROM User_Profile');
-//         await request.query('DELETE FROM [User]');
-
-//         // Commit the transaction if all delete operations are successful
-//         await transaction.commit();
-
-//         console.log('All tables in Wallet DB have been cleared.');
-//         return res.status(200).send('All records have been deleted successfully.');
-//     } catch (err) {
-//         console.error('Error resetting tables:', err);
-
-//         // If an error occurs, rollback the transaction
-//         if (transaction) {
-//             await transaction.rollback();
-//         }
-
-//         return res.status(500).send('Error resetting tables.');
-//     }
-// };
-
 
 
 module.exports.backdoorReset = async (req, res) => {
