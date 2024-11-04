@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 const sql = require('mssql');
 const dbConfigWallet = require('../config/dbConfigWallet');
 const axios = require('axios'); // Use axios for making HTTP requests from the backend
@@ -217,7 +225,7 @@ module.exports.saveCVProfile = async (req, res) => {
         console.log("PerID:", PerID);
 
         // Call the second API, passing the PerID and other profile data
-        const secondApiUrl = 'http://103.52.192.245:6011/api/saveCVProfile';
+        const secondApiUrl = 'http://172.16.20.26:3010/api/saveCVProfile';
         const profileData = { ...req.body, PerID }; // Add PerID to profile data
 
         try {
@@ -426,7 +434,7 @@ module.exports.saveCVEducation = async (req, res) => {
         console.log("educationEntries: " + educationEntries[0].start_date);
 
 
-        const secondApiUrl = 'http://103.52.192.245:6011/api/saveCVEducation';
+        const secondApiUrl = 'http://172.16.20.26:3010/api/saveCVEducation';
         const secondApiData = { ...req.body, educationEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -505,7 +513,7 @@ module.exports.deleteCVEducation = async (req, res) => {
         if (deleteResult.rowsAffected[0] > 0) {
             // Return 200 status code for successful deletion
 
-            const secondApiUrl = 'http://103.52.192.245:6011/api/deleteCVEducation';
+            const secondApiUrl = 'http://172.16.20.26:3010/api/deleteCVEducation';
 
 
             try {
@@ -622,7 +630,7 @@ module.exports.saveCVWork = async (req, res) => {
         const workEntries = [...existingWorkEntries, ...newWorkWithID];
         console.log(workEntries[0]);
 
-        const secondApiUrl = 'http://103.52.192.245:6011/api/saveCVWork';
+        const secondApiUrl = 'http://172.16.20.26:3010/api/saveCVWork';
         const secondApiData = { ...req.body, workEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -704,7 +712,7 @@ module.exports.deleteCVWork = async (req, res) => {
             await pool.request()
                 .input('WorkExpID', sql.Int, WorkExpID)
                 .query('DELETE FROM Work WHERE WorkExpID = @WorkExpID');
-            const secondApiUrl = 'http://103.52.192.245:6011/api/deleteCVWork';
+            const secondApiUrl = 'http://172.16.20.26:3010/api/deleteCVWork';
 
 
             try {
@@ -766,7 +774,7 @@ module.exports.saveCVCertification = async (req, res) => {
         const CerID = result.recordset[0].CerID;
 
         // Call the second function and pass the necessary data
-        const secondApiUrl = 'http://103.52.192.245:6011/api/saveCVCertification'; // Update with the actual URL if needed
+        const secondApiUrl = 'http://172.16.20.26:3010/api/saveCVCertification'; // Update with the actual URL if needed
         const secondApiData = {
             accountID,  // Account ID to be used as StudentAccID in the second function
             CerID,      // CerID from the first function passed as RefID in the second function
@@ -915,7 +923,7 @@ module.exports.saveCVSkill = async (req, res) => {
         }
 
         const skillEntries = [...existingSkillEntries, ...newSkillsWithID];
-        const secondApiUrl = 'http://10.123.10.108:6011/api/saveCVSkill';
+        const secondApiUrl = 'http://172.16.20.26:3010/api/saveCVSkill';
         const secondApiData = { ...req.body, skillEntries }; // Pass the inserted entries with EduBacID
         try {
             const secondApiResponse = await axios.post(secondApiUrl, secondApiData, {
@@ -1000,7 +1008,7 @@ module.exports.deleteCVSkill = async (req, res) => {
         await pool.request()
             .input('SoftID', sql.Int, SoftID)
             .query('DELETE FROM SoftSkill WHERE SoftID = @SoftID');
-        const secondApiUrl = 'http://103.52.192.245:6011/api/deleteCVSkill';
+        const secondApiUrl = 'http://172.16.20.26:3010/api/deleteCVSkill';
 
 
         try {
@@ -1096,8 +1104,8 @@ module.exports.updateCertificationStatus = async (req, res) => {
 
         // Determine the external API URL based on the isPublic value
         const apiUrl = isPublic
-            ? 'http://103.52.192.245:6011/api/updateCVCertification'
-            : 'http://103.52.192.245:6011/api/deleteCVCertification';
+            ? 'http://172.16.20.26:3010/api/updateCVCertification'
+            : 'http://172.16.20.26:3010/api/deleteCVCertification';
         console.log(apiUrl);
         // Prepare the certification object for the external API call
         const certData = {
@@ -1309,6 +1317,7 @@ module.exports.showDetails = async (req, res) => {
             SELECT 
                 SoftID AS SoftID,
                 SoftHighlight AS skill,
+                SoftLevel as level,
                 SoftDescription AS description,
                 IsPublic AS isPublic
             FROM SoftSkill
@@ -1421,7 +1430,7 @@ module.exports.showDetailsQR = async (req, res) => {
         // Fetch Work Experience information
         const workExperienceQuery = `
             SELECT
-                WorkExpID AS WorkExpID, 
+                WorkExpID AS workExpID, 
                 WorkTitle AS job_title, 
                 WorkCompany AS company_name, 
                 WorkIndustry AS industry, 
@@ -1447,6 +1456,7 @@ module.exports.showDetailsQR = async (req, res) => {
                 SoftID AS SoftID,
                 SoftHighlight AS skill,
                 SoftDescription AS description,
+                SoftLevel AS level,
                 IsPublic AS isPublic
             FROM SoftSkill
             WHERE AccountID = @accountID

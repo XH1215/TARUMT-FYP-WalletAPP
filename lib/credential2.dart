@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -39,7 +47,7 @@ class Credential2State extends State<Credential2> {
       if (accountID != null) {
         final response = await http.get(
           Uri.parse(
-              'http://103.52.192.245:4000/api/getCertifications?accountID=$accountID'),
+              'http://172.16.20.26:4000/api/getCertifications?accountID=$accountID'),
         );
         if (!mounted) return;
         if (response.statusCode == 200) {
@@ -94,7 +102,7 @@ class Credential2State extends State<Credential2> {
 
         // Call the backend with the updated certification data
         final response = await http.post(
-          Uri.parse('http://103.52.192.245:4000/api/updateCertificationStatus'),
+          Uri.parse('http://172.16.20.26:4000/api/updateCertificationStatus'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'accountID': accountID,

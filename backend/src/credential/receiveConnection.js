@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 const axios = require('axios');
 const sql = require('mssql');
 
@@ -19,7 +27,7 @@ async function receiveConnection(req, res) {
 
         console.log('Sending invitation to the SSI agent...');
         const response = await axios.post(
-            `http://103.52.192.245:7011/connections/receive-invitation`, 
+            `http://172.16.20.26:7011/connections/receive-invitation`, 
             invitation,
             {
                 headers: {
@@ -96,7 +104,7 @@ async function storeConnectionData(connectionID, issuer, status, email) {
 async function getAuthToken(walletID) {
     try {
         console.log(`Requesting auth token for walletID: ${walletID}`);
-        const url = `http://103.52.192.245:7011/multitenancy/wallet/${walletID}/token`;
+        const url = `http://172.16.20.26:7011/multitenancy/wallet/${walletID}/token`;
         console.log(`Requesting URL: ${url}`);
 
         const response = await axios.post(url);

@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
 import 'package:flutter/material.dart';
 import 'view_profile.dart';

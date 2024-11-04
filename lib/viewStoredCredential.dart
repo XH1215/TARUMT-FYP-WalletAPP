@@ -1,8 +1,17 @@
-import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
+
+import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
 
 class ViewStoredCredentialScreen extends StatefulWidget {
   const ViewStoredCredentialScreen({super.key});
@@ -32,7 +41,7 @@ class _ViewStoredCredentialScreenState
       try {
         devtools.log("Fetching stored credentials... ${user.email}");
         final response = await http.post(
-          Uri.parse('http://103.52.192.245:4000/api/receiveExistedCredential'),
+          Uri.parse('http://172.16.20.26:4000/api/receiveExistedCredential'),
           headers: {
             'Content-Type': 'application/json',
           },

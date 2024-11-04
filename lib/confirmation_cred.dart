@@ -1,3 +1,11 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -20,7 +28,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
 //let sainoforce know the status
   Future<void> sendMessage(String message, credential) async {
-    final url = Uri.parse('http://103.52.192.245:6011/api/UpdateStatus');
+    final url = Uri.parse('http://172.16.20.26:6011/api/UpdateStatus');
     devtools.log("Message Send");
     try {
       final response = await http.post(
@@ -70,7 +78,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
         // Step 1: Call getWalletData API
         final walletResponse = await http.post(
-          Uri.parse('http://103.52.192.245:4000/api/getWalletData'),
+          Uri.parse('http://172.16.20.26:4000/api/getWalletData'),
           headers: {
             'Content-Type': 'application/json',
           },
@@ -96,7 +104,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             devtools.log("Step2: Initiating getAuthToken call...");
 
             final tokenResponse = await http.post(
-              Uri.parse('http://103.52.192.245:4000/api/getAuthToken'),
+              Uri.parse('http://172.16.20.26:4000/api/getAuthToken'),
               headers: {
                 'Content-Type': 'application/json',
               },
@@ -113,7 +121,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               devtools.log("Step3: Fetching credentials using authToken...");
 
               final credentialsResponse = await http.post(
-                Uri.parse('http://103.52.192.245:4000/api/receiveOffer'),
+                Uri.parse('http://172.16.20.26:4000/api/receiveOffer'),
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization':
@@ -192,28 +200,31 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
 // Function to call storeCredential and saveCVCertification APIs
   Future<void> storeCredential(Map<String, dynamic> credential) async {
-    if (authToken == null && mounted) {
-      setState(() {
-        noDataMessage = "Auth token not found.";
-      });
+    // Check if authToken is missing
+    if (authToken == null) {
+      if (mounted) {
+        setState(() {
+          noDataMessage = "Auth token not found.";
+        });
+      }
       return;
     }
-    if (!mounted) return;
 
-    setState(() {
-      isLoading = true; // Set loading to true
-    });
+    // Set loading state only if the widget is still mounted
+    if (mounted) {
+      setState(() {
+        isLoading = true; // Set loading to true
+      });
+    }
 
     final MSSQLAuthProvider authProvider = MSSQLAuthProvider();
-    if (!mounted) return;
-
     await authProvider.initialize();
     final user = authProvider.currentUser;
+
     // Extract necessary fields for saveCVCertification API
-    user?.accountID.toString() ?? '0'; // Use the user's accountID
     Map<String, dynamic> credentialData = {
       'accountID': user?.accountID.toString() ?? '0', // The user's account ID
-      'CerName': credential['name'] ?? 'N/A', // The name from the credential
+      'CerName': credential['did'] ?? 'N/A', // The name from the credential
       'CerEmail': credential['email'] ?? 'N/A', // The email from the credential
       'CerType': credential['credentialType'] ?? 'N/A', // The credential type
       'CerIssuer': credential['issuerName'] ?? 'N/A', // The issuer name
@@ -222,10 +233,14 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       'credExId': credential['cred_ex_id'], // Send the credential exchange ID
       'jwtToken': authToken, // The JWT token
     };
+    devtools.log(credential['name']);
+    devtools.log(credential['credentialType']);
+
     try {
-      devtools.log("Calling storeCredential and saveCVCertification API...");
-      final response = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/storeCredential'),
+      // First API call: storeCredential
+      devtools.log("Calling storeCredential API...");
+      final storeResponse = await http.post(
+        Uri.parse('http://172.16.20.26:4000/api/storeCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -234,90 +249,101 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
           'jwtToken': authToken,
         }),
       );
-      if (!mounted) return;
 
-      if (response.statusCode == 200) {
+      if (storeResponse.statusCode == 200) {
         devtools.log('Credential stored successfully.');
-        final data = json.decode(response.body);
-        devtools.log('Store Response: $data');
+        final storeData = json.decode(storeResponse.body);
 
-        //heree
-        showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: const Text('Success'),
-              content: Text.rich(
-                TextSpan(
-                  text: 'Credential ',
-                  style: const TextStyle(color: Colors.black), // Normal text
-                  children: [
+        // If the first API call succeeds, move on to the second
+        devtools.log('Proceeding to saveCVCertification API...');
+
+        // Second API call: saveCVCertification
+        final saveResponse = await http.post(
+          Uri.parse('http://172.16.20.26:4000/api/saveCVCertification'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: json.encode(credentialData),
+        );
+
+        if (saveResponse.statusCode == 200) {
+          devtools.log('Certification saved successfully.');
+          final saveData = json.decode(saveResponse.body);
+
+          if (mounted) {
+            // Only update UI if the widget is still mounted
+            setState(() {
+              noDataMessage =
+                  'Credential stored and certification saved successfully.';
+            });
+
+            // Optionally show a success dialog if still mounted
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: const Text('Success'),
+                  content: Text.rich(
                     TextSpan(
-                      text: credential['did'] ?? 'N/A', // 'did' in bold
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      text: 'Credential ',
+                      style:
+                          const TextStyle(color: Colors.black), // Normal text
+                      children: [
+                        TextSpan(
+                          text: credential['did'] ?? 'N/A', // 'did' in bold
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const TextSpan(
+                          text: ' stored successfully.', // Normal text
+                        ),
+                      ],
                     ),
-                    const TextSpan(
-                      text: ' stored successfully.', // Normal text
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('OK'),
                     ),
                   ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
+                );
+              },
             );
-          },
-        );
-        if (!mounted) return;
-        setState(() {
-          noDataMessage = 'Credential stored successfully.';
-        });
-        await fetchCredentials();
-        if (!mounted) return;
-      } else {
-        setState(() {
-          noDataMessage = "Failed to store credential.";
-        });
-        devtools.log('Error storing credential: ${response.body}');
-      }
-      //------------------------------------------
-      // Step 1: Call saveCVCertification API
-      final saveToDB = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/saveCVCertification'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(credentialData),
-      );
-      if (!mounted) return;
+          }
 
-      if (saveToDB.statusCode == 200) {
-        devtools.log('Certification saved successfully.');
-        final saveData = json.decode(saveToDB.body);
-        devtools.log('Save Response: $saveData');
+          // Fetch credentials even if unmounted to ensure data is up-to-date
+          await fetchCredentials();
+        } else {
+          devtools.log('Save Certification Error: ${saveResponse.body}');
+          if (mounted) {
+            setState(() {
+              noDataMessage = "Failed to save certification.";
+            });
+          }
+        }
       } else {
-        devtools.log('Save Certification Error. Please Try Again');
-        final saveData = json.decode(saveToDB.body);
-        devtools.log("\nFail to Save\nResponse: ${saveData['message']}");
-        noDataMessage = "Failed to save certification.";
-        return;
+        devtools.log('Store Credential Error: ${storeResponse.body}');
+        if (mounted) {
+          setState(() {
+            noDataMessage = "Failed to store credential.";
+          });
+        }
       }
-
-      // Step 2: Call storeCredential API to accept the credential
     } catch (error) {
-      setState(() {
-        noDataMessage = "Error occurred during storing credential.";
-      });
       devtools.log('Error storing credential: $error');
+      if (mounted) {
+        setState(() {
+          noDataMessage = "Error occurred during storing credential.";
+        });
+      }
     } finally {
-      setState(() {
-        isLoading = false; // Set loading to false once done
-      });
+      // Set loading to false only if the widget is still mounted
+      if (mounted) {
+        setState(() {
+          isLoading = false; // Set loading to false once done
+        });
+      }
     }
   }
 
@@ -335,7 +361,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
       // Call the delete API with POST method
       final response = await http.post(
-        Uri.parse('http://103.52.192.245:4000/api/deleteCredential'),
+        Uri.parse('http://172.16.20.26:4000/api/deleteCredential'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -430,10 +456,10 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                                         vertical: 8.0, horizontal: 16.0),
                                     child: ListTile(
                                       title: Text(
-                                        'Title: ${credential['did'] ?? 'N/A'}', // Using the 'did' key from the credential directly
+                                        '${credential['did'] ?? 'N/A'}', // Using the 'did' key from the credential directly
                                       ),
                                       subtitle: Text(
-                                        'Description:\n${credential['description'] ?? 'N/A'}', // Using the 'description' key from the credential directly
+                                        '${credential['description'] ?? 'N/A'}', // Using the 'description' key from the credential directly
                                       ),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,

@@ -1,7 +1,15 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:firstly/generateQRView.dart';
 import 'package:firstly/services/auth/MSSQLAuthProvider.dart';
-import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
 
 import 'viewCV.dart'; // Make sure to import the viewCV page
@@ -68,9 +76,7 @@ class _qrViewState extends State<qrView> {
 
     try {
       await _authProvider.deleteQRCode(qrId);
-      if (!mounted) return;
       await _fetchQRCodes(); // Refresh the list after deletion
-      if (!mounted) return;
     } catch (e) {
       devtools.log('Error deleting QR Code: $e');
     } finally {
@@ -108,13 +114,13 @@ class _qrViewState extends State<qrView> {
     }
   }
 
-  void _showQRCodeImage(String qrCodeImage, int qrId) {
+  void _showQRCodeImage(String qrCodeImage, int qrId, String qrTitle) {
     final qrCodeImageBytes = base64Decode(qrCodeImage);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('QR Code'),
+          title: Text(qrTitle), // Show the QR code title here
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -197,8 +203,9 @@ class _qrViewState extends State<qrView> {
 
     // Check if a QR code was generated and refresh the list if needed
     if (result == 'qr_generated') {
-      _fetchQRCodes(); // Refresh the QR code list
-      if (!mounted) return;
+      setState(() {
+        _fetchQRCodes(); // Refresh the QR code list when navigating back
+      });
     }
   }
 
@@ -238,18 +245,24 @@ class _qrViewState extends State<qrView> {
                                 final formattedDate =
                                     '${expireDate.day}/${expireDate.month}/${expireDate.year}';
 
+                                // Fetch the title from qrCodes data
+                                final qrTitle =
+                                    qrCode['title'] ?? 'Untitled QR Code';
+
                                 return Card(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(15.0),
                                   ),
                                   child: ListTile(
-                                    title: Text('QR Code ${index + 1}'),
+                                    title: Text(
+                                        qrTitle), // Display the title from qrCodes
                                     subtitle:
                                         Text('Expires on: $formattedDate'),
                                     onTap: () => _showQRCodeImage(
-                                        qrCode['qrCodeImage'],
-                                        qrCode[
-                                            'qrId']), // Ensure qrId is passed correctly
+                                      qrCode['qrCodeImage'],
+                                      qrCode['qrId'], // Pass qrId
+                                      qrTitle, // Pass title to show in dialog
+                                    ),
                                   ),
                                 );
                               },
@@ -263,15 +276,19 @@ class _qrViewState extends State<qrView> {
               child: ElevatedButton(
                 onPressed: _navigateToGenerateQRView,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF171B63),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 60.0, vertical: 15.0),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
+                    borderRadius:
+                        BorderRadius.circular(30), // Larger rounded button
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 50, // More horizontal padding for larger button
+                    vertical: 20, // More vertical padding for height
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 20, // Larger font size for the button text
                   ),
                 ),
-                child: const Text('Generate QR Code',
-                    style: TextStyle(color: Colors.white, fontSize: 15.0)),
+                child: const Text('Generate QR Code'),
               ),
             ),
           ],

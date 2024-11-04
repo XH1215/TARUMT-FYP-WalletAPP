@@ -1,9 +1,18 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:firstly/show_error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as devtools show log;
+
 
 class AppWidget {
   static TextStyle headlineTextFieldStyle() {
@@ -124,7 +133,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.36:4000/api/getCVEducation?accountID=$accountID'),
+            'http://172.16.20.26:4000/api/getCVEducation?accountID=$accountID'),
       );
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -366,7 +375,7 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     try {
       // Make the request to save education entries
       final response = await http.post(
-        Uri.parse('http://192.168.1.36:4000/api/saveCVEducation'),
+        Uri.parse('http://172.16.20.26:4000/api/saveCVEducation'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
@@ -413,12 +422,12 @@ class _EducationInfoPageState extends State<EducationInfoPage> {
     if (eduBacID != null) {
       try {
         final response = await http.post(
-          Uri.parse('http://192.168.1.36:4000/api/deleteCVEducation'),
+          Uri.parse('http://172.16.20.26:4000/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );
         final response2 = await http.post(
-          Uri.parse('http://192.168.1.36:3011/api/deleteCVEducation'),
+          Uri.parse('http://172.16.20.26:6011/api/deleteCVEducation'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'EduBacID': eduBacID}),
         );

@@ -1,11 +1,20 @@
+/*
+A Collaborative Creation:
+CHIN KAH FUI
+CHIN XUAN HONG
+OLIVIA HUANG SI HAN
+LIM CHU QING
+*/
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:firstly/main.dart';
 import 'package:firstly/services/auth/auth_exception.dart';
 import 'package:firstly/services/auth/auth_service.dart';
+
+import 'dart:developer' as devtools show log;
+
 import 'package:firstly/show_error_dialog.dart';
 import 'package:firstly/signup.dart';
-import 'dart:developer' as devtools show log;
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
